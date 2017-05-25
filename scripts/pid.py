@@ -13,7 +13,7 @@ pubz = rospy.Publisher('plot_z', Float64, queue_size=5)
 pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
 
 def pid(data, state):
-    set_array = np.array([0.2, 0, 0, 1.57])
+    set_array = np.array([1, 0.05, 0, 180])
     error = np.array([data[0], data[1], data[2], data[3]]) - set_array
 
     pubx.publish(error[0])
@@ -25,13 +25,19 @@ def pid(data, state):
     state['integral'] += error
     state['derivative'] = error - state['lastError']
 
-    f = state['p'] * error + state['i'] * state['integral'] + state['d'] * state['derivative']  
+    f = state['p'] * error + state['i'] * state['integral'] + state['d'] * state['derivative']
     
     state['lastError'] = error
     
     twist = Twist()
-    # twist.linear.x = -f[0]
-    # twist.linear.y = -f[1]
-    # twist.linear.z = -f[2]
-    twist.angular.z = -f[3]
+    if error[3] > 1.5:
+        twist.angular.z = -f[3]
+    elif error[2] > 0.1:
+        twist.linear.z = -f[2]
+        twist.angular.z = -f[3]
+    else:
+        twist.linear.x = f[0]
+        twist.linear.y = -f[1]
+        twist.linear.z = -f[2]
+        twist.angular.z = -f[3]
     return twist, state

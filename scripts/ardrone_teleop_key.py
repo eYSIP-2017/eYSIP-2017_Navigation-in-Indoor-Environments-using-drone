@@ -33,6 +33,7 @@ from geometry_msgs.msg import Twist, Pose
 from std_msgs.msg import Empty
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
+from ardrone_autonomy.msg import Navdata
 
 import sys, select, termios, tty
 from pid import pid
@@ -91,7 +92,7 @@ turn = 1
 
 coords = np.array([0.0,0.0,0.0,0.0])
 
-def callback(data):
+def get_pose_from_aruco(data):
     global coords, yaw
     quaternion = (data.pose.orientation.x,
                   data.pose.orientation.y,
@@ -100,10 +101,14 @@ def callback(data):
                   )
     euler = euler_from_quaternion(quaternion)
     
-    coords[0] = data.pose.position.x
+    coords[2] = data.pose.position.x
     coords[1] = data.pose.position.y
-    coords[2] = data.pose.position.z
-    coords[3] = euler[2]
+    coords[0] = data.pose.position.z
+    # coords[3] = euler[2]
+
+def get_angle_from_navdata(data):
+    global coords
+    coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
 
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
@@ -111,7 +116,8 @@ def vels(speed,turn):
 if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
-    rospy.Subscriber("/Estimated_marker", Marker, callback)
+    rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
@@ -133,12 +139,14 @@ if __name__=="__main__":
         state = dict()
         state['lastError'] = np.array([0.,0.,0.,0.])
 
-        state['p'] = 2
-        state['i'] = 0
-        state['d'] = 0
+        # values of x and y may remain same
+        state['p'] = np.array([1, 1, 1, 0.1], dtype=float)
+        state['i'] = np.array([0, 0, 0, 0], dtype=float)
+        state['d'] = np.array([0, 0, 0, 0], dtype=float)
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
+
         twist = Twist()
         while(1):
             key = getKey()
@@ -159,15 +167,31 @@ if __name__=="__main__":
                         state['integral'] = np.array([0.,0.,0.,0.])
                         state['derivative'] = np.array([0.,0.,0.,0.])
                         break
+            # set yaw pid consts
             elif key == 'e':
-                pid_consts = str(input())
-                state['p'] = int(pid_consts[0])
-                state['i'] = int(pid_consts[1])
-                state['d'] = int(pid_consts[2])
+                pid_consts = input()
+                state['p'][3] = float(pid_consts[0])
+                state['i'][3] = float(pid_consts[1])
+                state['d'][3] = float(pid_consts[2])
+            # set z axis pid consts
+            elif key == 'd':
+                pid_consts = input()
+                state['p'][2] = float(pid_consts[0])
+                state['i'][2] = float(pid_consts[1])
+                state['d'][2] = float(pid_consts[2])
+            # set xy axis pid consts
+            elif key == 'c':
+                pid_consts = input()
+                state['p'][0] = float(pid_consts[0])
+                state['i'][0] = float(pid_consts[1])
+                state['d'][0] = float(pid_consts[2])
+                state['p'][1] = float(pid_consts[0])
+                state['i'][1] = float(pid_consts[1])
+                state['d'][1] = float(pid_consts[2])
             elif key == ' ':
                 xyz = (0,0,0,0,0,0)
             elif key == 'f':
-                print(state['p'], state['i'], state['d'])
+                print(state['p'][2], state['i'][2], state['d'][2])
             else:
                 # count = count + 1
                 # if count > 4:
@@ -188,8 +212,8 @@ if __name__=="__main__":
             #print("target: vx: {0}, wz: {1}".format(target_speed, target_turn))
             #print("publihsed: vx: {0}, wz: {1}".format(twist.linear.x, twist.angular.z))
 
-    except Exception as e:
-        print e
+    # except Exception as e:
+    #     print e
 
     finally:
         twist = Twist()
