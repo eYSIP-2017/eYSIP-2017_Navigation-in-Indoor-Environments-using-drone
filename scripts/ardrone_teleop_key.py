@@ -122,6 +122,7 @@ if __name__=="__main__":
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
+    reset_pub = rospy.Publisher('/ardrone/reset', Empty, queue_size=5)
 
     xyz = (0,0,0,0,0,0)
     th = 0
@@ -199,7 +200,7 @@ if __name__=="__main__":
                 if (key == '\x03'):
                     break
 
-
+            xyz = [xyz[i] * 0.5 for i in range(6)]
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]
