@@ -29,8 +29,8 @@
 
 import rospy
 
-from geometry_msgs.msg import Twist, Pose
-from std_msgs.msg import Empty
+from geometry_msgs.msg import Twist, Pose, Vector3Stamped
+from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
@@ -100,14 +100,28 @@ def get_pose_from_aruco(data):
                   data.pose.orientation.w
                   )
     euler = euler_from_quaternion(quaternion)
-    
-    coords[2] = data.pose.position.x
-    coords[1] = data.pose.position.y
-    coords[0] = data.pose.position.z
-    # coords[3] = euler[2]
+    if aruco_front:
+        coords[2] = data.pose.position.x
+        coords[1] = data.pose.position.y
+        coords[0] = data.pose.position.z
+        coords[3] = euler[1]
+    else:
+        coords[0] = data.pose.position.x
+        coords[1] = data.pose.position.y
+        coords[2] = data.pose.position.z
+        coords[3] = euler[2]
+    temp_pub.publish(coords[3])
 
 def get_angle_from_navdata(data):
     global coords
+    # # mag = np.array([data.vector.x, data.vector.y])
+    # mag = np.array([data.magX, data.magY])
+    # # target = np.array([0.50, 0.])
+    # target = np.array([0., 30.])
+    # target[0] = target[0] if target[0] >= 0 else 0
+
+    # coords[3] = np.arccos(np.sum(mag*target)/(np.sqrt(np.sum(np.square(mag)))* np.sqrt(np.sum(np.square(target)))))
+
     coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
 
 def vels(speed,turn):
@@ -116,9 +130,12 @@ def vels(speed,turn):
 if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
+    aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
+    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
+    # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
+    temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
@@ -141,9 +158,14 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        state['p'] = np.array([1, 1, 1, 0.1], dtype=float)
-        state['i'] = np.array([0, 0, 0, 0], dtype=float)
-        state['d'] = np.array([0, 0, 0, 0], dtype=float)
+        if aruco_front:
+            state['p'] = np.array([1, 1, 1, 0.5], dtype=float)
+            state['i'] = np.array([0, 0, 0, 0], dtype=float)
+            state['d'] = np.array([0, 0, 0, 0], dtype=float)
+        else:
+            state['p'] = np.array([0.5, 0.5, 0.5, 1], dtype=float)
+            state['i'] = np.array([0, 0, 0, 0], dtype=float)
+            state['d'] = np.array([0, 0, 0, 0], dtype=float)
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
@@ -160,13 +182,18 @@ if __name__=="__main__":
                 land_pub.publish()
             elif key == 'p':
                 while 1:
-                    pid_twist, state = pid(coords, state)
+                    pid_twist, state = pid(coords, state, aruco_front)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 's':
                         state['lastError'] = np.array([0.,0.,0.,0.])
                         state['integral'] = np.array([0.,0.,0.,0.])
                         state['derivative'] = np.array([0.,0.,0.,0.])
+                        xyz = (0,0,0,0,0,0)
+                        break
+                    elif key == 'g':
+                        land_pub.publish()
+                        xyz = (0,0,0,0,0,0)
                         break
             # set yaw pid consts
             elif key == 'e':
@@ -189,14 +216,14 @@ if __name__=="__main__":
                 state['p'][1] = float(pid_consts[0])
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
-            elif key == ' ':
-                xyz = (0,0,0,0,0,0)
+            elif key == ' ' or key == 'b':
+                reset_pub.publish()
             elif key == 'f':
-                print(state['p'][2], state['i'][2], state['d'][2])
+                print(state['p'][3], state['i'][3], state['d'][3])
             else:
                 # count = count + 1
                 # if count > 4:
-                #     xyz = (0,0,0,0,0,0)
+                # xyz = (0,0,0,0,0,0)
                 if (key == '\x03'):
                     break
 

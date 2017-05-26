@@ -12,8 +12,11 @@ puby = rospy.Publisher('plot_y', Float64, queue_size=5)
 pubz = rospy.Publisher('plot_z', Float64, queue_size=5)
 pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
 
-def pid(data, state):
-    set_array = np.array([1, 0.05, 0, 180])
+def pid(data, state, aruco_front):
+    if aruco_front:
+        set_array = np.array([1., 0., 0., 0.])
+    else:
+        set_array = np.array([0., 0., 1., 0.])
     error = np.array([data[0], data[1], data[2], data[3]]) - set_array
 
     pubx.publish(error[0])
@@ -29,15 +32,29 @@ def pid(data, state):
     
     state['lastError'] = error
     
+    # max_yaw = 1.
+    # f[3] = f[3] if f[3] < 1 else max_yaw
+
     twist = Twist()
-    if error[3] > 1.5:
-        twist.angular.z = -f[3]
-    elif error[2] > 0.1:
+    # if error[3] > 1.5:
+    #     twist.angular.z = -f[3]
+    # elif error[2] > 0.1:
+    #     # twist.linear.z = -f[2]
+    #     twist.angular.z = -f[3]
+    # else:
+    if aruco_front:
+        twist.linear.x = f[0] * np.cos(data[3])
+        twist.linear.y = -f[1] * np.cos(data[3])
         twist.linear.z = -f[2]
-        twist.angular.z = -f[3]
+        twist.angular.z = f[3]
     else:
-        twist.linear.x = f[0]
-        twist.linear.y = -f[1]
-        twist.linear.z = -f[2]
-        twist.angular.z = -f[3]
+        if error[0] > 0.1 or error[0] < -0.1 or error[1] > 0.1 or error[1] < -0.1 or error[2] > 0.1 or error[2] < -0.1:
+            twist.linear.x = -f[0] * np.cos(data[3])
+            twist.linear.y = -f[1] * np.cos(data[3])
+            twist.linear.z = -f[2]
+        else:
+            twist.linear.x = -f[0] * np.cos(data[3])
+            twist.linear.y = -f[1] * np.cos(data[3])
+            twist.linear.z = -f[2]
+            twist.angular.z = -f[3]
     return twist, state
