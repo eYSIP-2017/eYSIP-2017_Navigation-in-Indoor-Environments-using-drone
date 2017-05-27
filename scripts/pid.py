@@ -3,6 +3,7 @@ import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
 from std_msgs.msg import Float64
+from drone_application.msg import pid_error
 from ardrone_autonomy.msg import Navdata
 from visualization_msgs.msg import Marker
 import numpy as np
@@ -11,6 +12,8 @@ pubx = rospy.Publisher('plot_x', Float64, queue_size=5)
 puby = rospy.Publisher('plot_y', Float64, queue_size=5)
 pubz = rospy.Publisher('plot_z', Float64, queue_size=5)
 pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
+
+error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
 def pid(data, state, aruco_front):
     if aruco_front:
@@ -24,7 +27,7 @@ def pid(data, state, aruco_front):
     pubz.publish(error[2])
     pub_yaw.publish(error[3])
 
-    print(error)
+    error_pub.publish(error)
     state['integral'] += error
     state['derivative'] = error - state['lastError']
 

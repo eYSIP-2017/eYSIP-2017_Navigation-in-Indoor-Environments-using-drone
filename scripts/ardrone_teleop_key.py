@@ -26,6 +26,7 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+from __future__ import print_function
 
 import rospy
 
@@ -151,8 +152,8 @@ if __name__=="__main__":
     control_speed = 0
     control_turn = 0
     try:
-        print msg
-        print vels(speed,turn)
+        print(msg)
+        print(vels(speed,turn))
         # state dict for pid
         state = dict()
         state['lastError'] = np.array([0.,0.,0.,0.])
@@ -191,6 +192,30 @@ if __name__=="__main__":
                         state['derivative'] = np.array([0.,0.,0.,0.])
                         xyz = (0,0,0,0,0,0)
                         break
+                    elif key == 'e':
+                        pid_consts = input()
+                        state['p'][3] = float(pid_consts[0])
+                        state['i'][3] = float(pid_consts[1])
+                        state['d'][3] = float(pid_consts[2])
+                    # set z axis pid consts
+                    elif key == 'd':
+                        pid_consts = input()
+                        state['p'][2] = float(pid_consts[0])
+                        state['i'][2] = float(pid_consts[1])
+                        state['d'][2] = float(pid_consts[2])
+                    # set xy axis pid consts
+                    elif key == 'c':
+                        pid_consts = input()
+                        state['p'][0] = float(pid_consts[0])
+                        state['i'][0] = float(pid_consts[1])
+                        state['d'][0] = float(pid_consts[2])
+                        state['p'][1] = float(pid_consts[0])
+                        state['i'][1] = float(pid_consts[1])
+                        state['d'][1] = float(pid_consts[2])
+                    elif key == 'f':
+                        print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
+                             state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))
+                        print('e - yaw;     d - z_axis;     c - xy_axis')
                     elif key == 'g':
                         land_pub.publish()
                         xyz = (0,0,0,0,0,0)
@@ -216,10 +241,13 @@ if __name__=="__main__":
                 state['p'][1] = float(pid_consts[0])
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
-            elif key == ' ' or key == 'b':
+            elif key == ' ':
                 reset_pub.publish()
             elif key == 'f':
-                print(state['p'][3], state['i'][3], state['d'][3])
+                # print(state['p'][3], state['i'][3], state['d'][3], )
+                print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
+                     state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))
+                print('e - yaw;     d - z_axis;     c - xy_axis')
             else:
                 # count = count + 1
                 # if count > 4:
