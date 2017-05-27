@@ -1,0 +1,1 @@
+copy these files to ~/.ros/camera_info
