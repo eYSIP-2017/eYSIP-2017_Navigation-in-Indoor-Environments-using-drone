@@ -113,6 +113,15 @@ def get_pose_from_aruco(data):
         coords[3] = euler[2]
     temp_pub.publish(coords[3])
 
+# dt = 0.
+# last_time = -0.00000000000000001
+
+# def get_time_from_navdata(data):
+#     global dt, last_time
+#     current_time = data.tm
+#     dt = current_time - last_time
+#     last_time = current_time
+
 def get_angle_from_navdata(data):
     global coords
     # # mag = np.array([data.vector.x, data.vector.y])
@@ -129,11 +138,12 @@ def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
+    # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
+    # rospy.Subscriber("/ardrone/navdata", Navdata, get_time_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
@@ -160,11 +170,11 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            state['p'] = np.array([1, 1, 1, 0.5], dtype=float)
+            state['p'] = np.array([0.1, 0.1, 0.1, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
             state['d'] = np.array([0, 0, 0, 0], dtype=float)
         else:
-            state['p'] = np.array([0.5, 0.5, 0.5, 1], dtype=float)
+            state['p'] = np.array([0.1, 0.1, 0.1, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
             state['d'] = np.array([0, 0, 0, 0], dtype=float)
 
@@ -172,7 +182,9 @@ if __name__=="__main__":
         state['derivative'] = np.array([0.,0.,0.,0.])
 
         twist = Twist()
+        import time
         while(1):
+            state['last_time'] = time.time()
             key = getKey()
             if key in moveBindings.keys():
                 xyz = moveBindings[key]
@@ -192,26 +204,6 @@ if __name__=="__main__":
                         state['derivative'] = np.array([0.,0.,0.,0.])
                         xyz = (0,0,0,0,0,0)
                         break
-                    elif key == 'e':
-                        pid_consts = input()
-                        state['p'][3] = float(pid_consts[0])
-                        state['i'][3] = float(pid_consts[1])
-                        state['d'][3] = float(pid_consts[2])
-                    # set z axis pid consts
-                    elif key == 'd':
-                        pid_consts = input()
-                        state['p'][2] = float(pid_consts[0])
-                        state['i'][2] = float(pid_consts[1])
-                        state['d'][2] = float(pid_consts[2])
-                    # set xy axis pid consts
-                    elif key == 'c':
-                        pid_consts = input()
-                        state['p'][0] = float(pid_consts[0])
-                        state['i'][0] = float(pid_consts[1])
-                        state['d'][0] = float(pid_consts[2])
-                        state['p'][1] = float(pid_consts[0])
-                        state['i'][1] = float(pid_consts[1])
-                        state['d'][1] = float(pid_consts[2])
                     elif key == 'f':
                         print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
                              state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))

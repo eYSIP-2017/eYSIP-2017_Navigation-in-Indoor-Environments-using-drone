@@ -7,6 +7,7 @@ from drone_application.msg import pid_error
 from ardrone_autonomy.msg import Navdata
 from visualization_msgs.msg import Marker
 import numpy as np
+import time
 
 pubx = rospy.Publisher('plot_x', Float64, queue_size=5)
 puby = rospy.Publisher('plot_y', Float64, queue_size=5)
@@ -16,6 +17,8 @@ pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
 error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
 def pid(data, state, aruco_front):
+    current_time = time.time()
+    dt = current_time - state['last_time']
     if aruco_front:
         set_array = np.array([1., 0., 0., 0.])
     else:
@@ -28,12 +31,16 @@ def pid(data, state, aruco_front):
     pub_yaw.publish(error[3])
 
     error_pub.publish(error)
-    state['integral'] += error
-    state['derivative'] = error - state['lastError']
+    
+    state['integral'] += error * dt
+    # state['integral'] = min(state['integral'], 1.)
+    # state['integral'] = max(state['integral'], -1.)
+    state['derivative'] = (error - state['lastError']) / dt
 
     f = state['p'] * error + state['i'] * state['integral'] + state['d'] * state['derivative']
     
     state['lastError'] = error
+    state['last_time'] = current_time
     
     # max_yaw = 1.
     # f[3] = f[3] if f[3] < 1 else max_yaw
