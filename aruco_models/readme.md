@@ -1,0 +1,1 @@
+These models need to be copied to ~/.gazebo/models
