@@ -95,12 +95,12 @@ coords = np.array([0.0,0.0,0.0,0.0])
 
 def get_pose_from_aruco(data):
     global coords, yaw
-    # quaternion = (data.pose.orientation.x,
-    #               data.pose.orientation.y,
-    #               data.pose.orientation.z,
-    #               data.pose.orientation.w
-    #               )
-    # euler = euler_from_quaternion(quaternion)
+    quaternion = (data.pose.orientation.x,
+                  data.pose.orientation.y,
+                  data.pose.orientation.z,
+                  data.pose.orientation.w
+                  )
+    euler = euler_from_quaternion(quaternion)
     if aruco_front:
         coords[2] = data.pose.position.x
         coords[1] = data.pose.position.y
@@ -248,7 +248,7 @@ if __name__=="__main__":
             else:
                 # count = count + 1
                 # if count > 4:
-                # xyz = (0,0,0,0,0,0)
+                xyz = (0,0,0,0,0,0)
                 if (key == '\x03'):
                     break
 
