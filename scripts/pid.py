@@ -16,13 +16,14 @@ pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
 
 error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
-def pid(data, state, aruco_front):
+def pid(data, state, aruco_front, yaw_set):
     current_time = time.time()
     dt = current_time - state['last_time']
     if aruco_front:
-        set_array = np.array([1., 0., 0., 0.])
+        set_array = np.array([1., 0., 0., 180.])
     else:
         set_array = np.array([0., 0., 1., 0.])
+    # set_array[3] = yaw_set
     error = np.array([data[0], data[1], data[2], data[3]]) - set_array
 
     pubx.publish(error[0])
@@ -52,11 +53,12 @@ def pid(data, state, aruco_front):
     #     # twist.linear.z = -f[2]
     #     twist.angular.z = -f[3]
     # else:
+    f = np.clip(f, -0.5, 0.5)
     if aruco_front:
-        twist.linear.x = f[0] * np.cos(data[3])
-        twist.linear.y = -f[1] * np.cos(data[3])
+        twist.linear.x = -f[0] * np.cos(data[3])
+        twist.linear.y = f[1] * np.cos(data[3])
         twist.linear.z = -f[2]
-        twist.angular.z = f[3]
+        twist.angular.z = -f[3]
     else:
         if error[0] > 0.1 or error[0] < -0.1 or error[1] > 0.1 or error[1] < -0.1 or error[2] > 0.1 or error[2] < -0.1:
             twist.linear.x = -f[0] * np.cos(data[3])

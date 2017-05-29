@@ -95,17 +95,17 @@ coords = np.array([0.0,0.0,0.0,0.0])
 
 def get_pose_from_aruco(data):
     global coords, yaw
-    quaternion = (data.pose.orientation.x,
-                  data.pose.orientation.y,
-                  data.pose.orientation.z,
-                  data.pose.orientation.w
-                  )
-    euler = euler_from_quaternion(quaternion)
+    # quaternion = (data.pose.orientation.x,
+    #               data.pose.orientation.y,
+    #               data.pose.orientation.z,
+    #               data.pose.orientation.w
+    #               )
+    # euler = euler_from_quaternion(quaternion)
     if aruco_front:
         coords[2] = data.pose.position.x
         coords[1] = data.pose.position.y
         coords[0] = data.pose.position.z
-        coords[3] = euler[1]
+        # coords[3] = euler[1]
     else:
         coords[0] = data.pose.position.x
         coords[1] = data.pose.position.y
@@ -133,6 +133,8 @@ def get_angle_from_navdata(data):
     # coords[3] = np.arccos(np.sum(mag*target)/(np.sqrt(np.sum(np.square(mag)))* np.sqrt(np.sum(np.square(target)))))
 
     coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
+    temp_pub.publish(coords[3])
+
 
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
@@ -143,7 +145,7 @@ if __name__=="__main__":
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    # rospy.Subscriber("/ardrone/navdata", Navdata, get_time_from_navdata)
+    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
@@ -170,7 +172,7 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            state['p'] = np.array([0.1, 0.1, 0.1, 0.1], dtype=float)
+            state['p'] = np.array([0.1, 0.1, 0.1, 0.07], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
             state['d'] = np.array([0, 0, 0, 0], dtype=float)
         else:
@@ -180,6 +182,7 @@ if __name__=="__main__":
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
+        yaw_set = 180
 
         twist = Twist()
         import time
@@ -195,7 +198,7 @@ if __name__=="__main__":
                 land_pub.publish()
             elif key == 'p':
                 while 1:
-                    pid_twist, state = pid(coords, state, aruco_front)
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 's':
@@ -233,6 +236,8 @@ if __name__=="__main__":
                 state['p'][1] = float(pid_consts[0])
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
+            elif key == 'x':
+            	yaw_set = input()
             elif key == ' ':
                 reset_pub.publish()
             elif key == 'f':
@@ -247,7 +252,8 @@ if __name__=="__main__":
                 if (key == '\x03'):
                     break
 
-            xyz = [xyz[i] * 0.5 for i in range(6)]
+            # xyz = [xyz[i] * 0.5 for i in range(6)]
+            xyz = np.clip(np.array(xyz), -0.5, 0.5)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]
