@@ -135,6 +135,9 @@ def get_angle_from_navdata(data):
     coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
     temp_pub.publish(coords[3])
 
+def check_battery(data):
+    if data.batteryPercent < 15:
+        land_pub.publish()
 
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
@@ -144,6 +147,7 @@ if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
+    rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
