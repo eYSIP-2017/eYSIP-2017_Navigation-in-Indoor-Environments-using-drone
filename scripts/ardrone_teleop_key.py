@@ -111,7 +111,7 @@ def get_pose_from_aruco(data):
         coords[1] = data.pose.position.y
         coords[2] = data.pose.position.z
         coords[3] = euler[2]
-    temp_pub.publish(coords[3])
+    # temp_pub.publish(coords[3])
 
 # dt = 0.
 # last_time = -0.00000000000000001
@@ -149,7 +149,7 @@ if __name__=="__main__":
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
+    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
@@ -176,13 +176,13 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            state['p'] = np.array([0.1, 0.1, 0.1, 0.07], dtype=float)
+            state['p'] = np.array([0.02, 0.02, 0.05, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
-            state['d'] = np.array([0, 0, 0, 0], dtype=float)
+            state['d'] = np.array([0., 0, 0, 0], dtype=float)
         else:
-            state['p'] = np.array([0.1, 0.1, 0.1, 0.1], dtype=float)
+            state['p'] = np.array([0.5, 0.5, 0.1, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
-            state['d'] = np.array([0, 0, 0, 0], dtype=float)
+            state['d'] = np.array([0.1, 0.1, 0, 0], dtype=float)
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
@@ -257,7 +257,7 @@ if __name__=="__main__":
                     break
 
             # xyz = [xyz[i] * 0.5 for i in range(6)]
-            xyz = np.clip(np.array(xyz), -0.5, 0.5)
+            xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]
