@@ -105,13 +105,13 @@ def get_pose_from_aruco(data):
         coords[2] = data.pose.position.x
         coords[1] = data.pose.position.y
         coords[0] = data.pose.position.z
-        # coords[3] = euler[1]
+        coords[3] = euler[1]
     else:
         coords[0] = data.pose.position.x
         coords[1] = data.pose.position.y
         coords[2] = data.pose.position.z
         coords[3] = euler[2]
-    # temp_pub.publish(coords[3])
+    temp_pub.publish(coords[3])
 
 # dt = 0.
 # last_time = -0.00000000000000001
@@ -133,7 +133,7 @@ def get_angle_from_navdata(data):
     # coords[3] = np.arccos(np.sum(mag*target)/(np.sqrt(np.sum(np.square(mag)))* np.sqrt(np.sum(np.square(target)))))
 
     coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
-    temp_pub.publish(coords[3])
+    # temp_pub.publish(coords[3])
 
 def check_battery(data):
     if data.batteryPercent < 15:
@@ -149,7 +149,7 @@ if __name__=="__main__":
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
+    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
@@ -175,10 +175,13 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
+        xy_pid = [0.15, 0., 0.1]
+        # xy_pid = [2, 0., 0.]
         if aruco_front:
-            state['p'] = np.array([0.02, 0.02, 0.05, 0.1], dtype=float)
-            state['i'] = np.array([0, 0, 0, 0], dtype=float)
-            state['d'] = np.array([0., 0, 0, 0], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.2, 0.6], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.02], dtype=float)
+            # d value = 0.05
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.1, 0], dtype=float)
         else:
             state['p'] = np.array([0.5, 0.5, 0.1, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
@@ -252,7 +255,7 @@ if __name__=="__main__":
             else:
                 # count = count + 1
                 # if count > 4:
-                xyz = (0,0,0,0,0,0)
+                # xyz = (0,0,0,0,0,0)
                 if (key == '\x03'):
                     break
 

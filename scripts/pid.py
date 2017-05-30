@@ -20,11 +20,13 @@ def pid(data, state, aruco_front, yaw_set):
     current_time = time.time()
     dt = current_time - state['last_time']
     if aruco_front:
-        set_array = np.array([0.5, 0., 0., 180.])
+        set_array = np.array([1., 0., 0., 0.])
     else:
         set_array = np.array([0., 0., 0.7, 0.])
     # set_array[3] = yaw_set
-    error = np.array([round(data[0], 2), round(data[1], 2), round(data[2], 2), round(data[3], 2)]) - set_array
+    # error = np.array([round(data[0], 2), round(data[1], 2), round(data[2], 2), round(data[3], 2)]) - set_array
+    error = np.array([data[0], data[1], data[2], data[3]]) - set_array
+    error = np.around(error, decimals=2)
 
     pubx.publish(error[0])
     puby.publish(error[1])
@@ -58,7 +60,7 @@ def pid(data, state, aruco_front, yaw_set):
         twist.linear.x = f[0] * np.cos(error[3])
         twist.linear.y = -f[1] * np.cos(error[3])
         twist.linear.z = -f[2]
-        # twist.angular.z = -f[3]
+        twist.angular.z = f[3]
     else:
         if error[0] > 0.1 or error[0] < -0.1 or error[1] > 0.1 or error[1] < -0.1 or error[2] > 0.1 or error[2] < -0.1:
             twist.linear.x = -f[0] * np.cos(error[3])
