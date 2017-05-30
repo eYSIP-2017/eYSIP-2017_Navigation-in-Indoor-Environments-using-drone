@@ -35,6 +35,7 @@ from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
+from sensor_msgs.msg import Image
 
 import sys, select, termios, tty
 from pid import pid
@@ -122,7 +123,7 @@ def get_pose_from_aruco(data):
 #     dt = current_time - last_time
 #     last_time = current_time
 
-def get_angle_from_navdata(data):
+def get_angle_from_navdata(data, args):
     global coords
     # # mag = np.array([data.vector.x, data.vector.y])
     # mag = np.array([data.magX, data.magY])
@@ -133,26 +134,42 @@ def get_angle_from_navdata(data):
     # coords[3] = np.arccos(np.sum(mag*target)/(np.sqrt(np.sum(np.square(mag)))* np.sqrt(np.sum(np.square(target)))))
 
     coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
-    temp_pub.publish(coords[3])
+    args.publish(coords[3])
 
 def check_battery(data):
     if data.batteryPercent < 15:
         land_pub.publish()
 
-def vels(speed,turn):
-    return "currently:\tspeed %s\tturn %s " % (speed,turn)
+
+# global variables for pid
+state = dict()
+yaw_set = 180
+pid_flag = False
+
+def get_image_frame(data):
+    global state
+    if pid_flag:
+        pid_twist, state = pid(coords, state, aruco_front, yaw_set)
+        pub.publish(pid_twist)
+
 
 if __name__=="__main__":
+    # global state, yaw_set
     # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
-    # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
-    
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
+    rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata, (temp_pub))
+    # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
+    if aruco_front:
+        rospy.Subscriber("/ardrone/front/image_raw", Image, get_image_frame)
+    else:
+        rospy.Subscriber("/ardrone/bottom/image_raw", Image, get_image_frame)
+    
+    
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
@@ -169,14 +186,12 @@ if __name__=="__main__":
     control_turn = 0
     try:
         print(msg)
-        print(vels(speed,turn))
         # state dict for pid
-        state = dict()
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
         if aruco_front:
-            state['p'] = np.array([0.02, 0.02, 0.05, 0.1], dtype=float)
+            state['p'] = np.array([2, 2, 2, 0.1], dtype=float)
             state['i'] = np.array([0, 0, 0, 0], dtype=float)
             state['d'] = np.array([0., 0, 0, 0], dtype=float)
         else:
@@ -186,7 +201,6 @@ if __name__=="__main__":
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
-        yaw_set = 180
 
         twist = Twist()
         import time
@@ -199,26 +213,17 @@ if __name__=="__main__":
             elif key == 't':
                 take_off_pub.publish()
             elif key == 'g':
+                xyz = (0,0,0,0,0,0)
                 land_pub.publish()
+                pid_flag = False
             elif key == 'p':
-                while 1:
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
-                    pub.publish(pid_twist)
-                    key = getKey()
-                    if key == 's':
-                        state['lastError'] = np.array([0.,0.,0.,0.])
-                        state['integral'] = np.array([0.,0.,0.,0.])
-                        state['derivative'] = np.array([0.,0.,0.,0.])
-                        xyz = (0,0,0,0,0,0)
-                        break
-                    elif key == 'f':
-                        print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
-                             state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))
-                        print('e - yaw;     d - z_axis;     c - xy_axis')
-                    elif key == 'g':
-                        land_pub.publish()
-                        xyz = (0,0,0,0,0,0)
-                        break
+                pid_flag = True
+            elif key == 's':
+                state['lastError'] = np.array([0.,0.,0.,0.])
+                state['integral'] = np.array([0.,0.,0.,0.])
+                state['derivative'] = np.array([0.,0.,0.,0.])
+                xyz = (0,0,0,0,0,0)
+                pid_flag = False
             # set yaw pid consts
             elif key == 'e':
                 pid_consts = input()
@@ -241,7 +246,7 @@ if __name__=="__main__":
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
             elif key == 'x':
-            	yaw_set = input()
+                yaw_set = input()
             elif key == ' ':
                 reset_pub.publish()
             elif key == 'f':
