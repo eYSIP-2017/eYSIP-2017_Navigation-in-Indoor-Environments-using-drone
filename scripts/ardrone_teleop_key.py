@@ -175,17 +175,17 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.15, 0., 0.1]
+        xy_pid = [0.3, 0.05, 0.4]
+        xy_pid_bottom = [0.2, 0., 0.2]
         # xy_pid = [2, 0., 0.]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.2, 0.6], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.02], dtype=float)
-            # d value = 0.05
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.1, 0], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
         else:
-            state['p'] = np.array([0.5, 0.5, 0.1, 0.1], dtype=float)
-            state['i'] = np.array([0, 0, 0, 0], dtype=float)
-            state['d'] = np.array([0.1, 0.1, 0, 0], dtype=float)
+            state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.6], dtype=float)
+            state['i'] = np.array([xy_pid_bottom[1], xy_pid_bottom[1], 0.1, 0.1], dtype=float)
+            state['d'] = np.array([xy_pid_bottom[2], xy_pid_bottom[2], 1, 0.05], dtype=float)
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
@@ -244,7 +244,8 @@ if __name__=="__main__":
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
             elif key == 'x':
-            	yaw_set = input()
+            	state['i'][0] = input()
+            	state['i'][1] = state['i'][0]
             elif key == ' ':
                 reset_pub.publish()
             elif key == 'f':
