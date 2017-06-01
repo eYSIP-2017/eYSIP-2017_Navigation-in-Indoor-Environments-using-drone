@@ -200,5 +200,5 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-#add_executable(octmap_publisher src/octmap_publisher.cpp)
-#target_link_libraries(octmap_publisher ${catkin_LIBRARIES})
+# add_executable(octmap_publisher src/octmap_publisher.cpp)
+# target_link_libraries(octmap_publisher ${catkin_LIBRARIES})
