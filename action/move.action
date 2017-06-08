@@ -1,0 +1,9 @@
+# goal definition
+float64[] waypoint
+---
+# result definition
+bool success
+float64[] error
+---
+# feedback
+flaot64[] difference
