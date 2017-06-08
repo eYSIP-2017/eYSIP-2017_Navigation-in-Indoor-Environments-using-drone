@@ -7,6 +7,8 @@ from moveit_msgs.msg import DisplayTrajectory
 from tf.transformations import euler_from_quaternion
 from collections import deque
 import tf
+import actionlib
+import drone_application.msg
 import numpy as np
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
@@ -92,6 +94,19 @@ def listener():
     # run simultaneously.
     rospy.init_node('follow_trajectory', anonymous=True)
     tf_listener = tf.TransformListener()
+
+    client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+
+    client.wait_for_server()
+    print('server_found')
+
+    goal = drone_application.msg.moveGoal(waypoints[1])
+    client.send_goal(goal)
+
+    client.wait_for_result()
+    print(client.get_result())
+    return
+
     while not rospy.is_shutdown():
         trans, rot = moniter_transform(tf_listener)
         if trans is None:
