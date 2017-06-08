@@ -107,4 +107,10 @@ def listener():
 
 # runs the listener function if the file is run as a script
 if __name__ == '__main__':
-    listener()
+    try:
+        listener()
+    except KeyboardInterrupt:
+        print('interrupt')
+    finally:
+        twist = Twist()
+        pub.publish(twist)
