@@ -4,6 +4,7 @@ import rospy
 import actionlib
 import drone_application.msg
 import tf
+from geometry_msgs.msg import Twist
 import numpy as np
 
 class moveAction(object):
@@ -14,10 +15,12 @@ class moveAction(object):
     def __init__(self, name):
         self._action_name = name
         self.tf_listener = tf.TransformListener()
+        self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
         self._as = actionlib.SimpleActionServer(self._action_name, drone_application.msg.moveAction, execute_cb=self.execute_cb, auto_start = False)
         self._as.start()
         print('server ready')
 
+    # returns the current pose of the drone
     def moniter_transform(self):
         trans = None
         while trans is None:
@@ -25,32 +28,51 @@ class moveAction(object):
                 trans, rot = self.tf_listener.lookupTransform('/nav', '/base_link', rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
-        return trans, rot
+        euler = tf.transformations.euler_from_quaternion(rot)
+        return np.array([trans[0], trans[1], trans[2], euler[2]])
 
     def move_to_waypoint(self, waypoint):
-        trans, rot = self.moniter_transform()
-        euler = tf.transformations.euler_from_quaternion(rot)
+        current_pose = self.moniter_transform()
 
-        start_state = np.array([trans[0], trans[1], trans[2], euler[2]])
-        # print(start_state)
+        end_pose = waypoint #- current_pose
+
+        twist = Twist()
+        error_tolerence = np.array([0.1, 0.1, 0.1, 0.1])
+        while (current_pose > end_pose + error_tolerence).any() or (current_pose < end_pose - error_tolerence).any():
+            difference = end_pose - current_pose
+            # difference = difference.astype(int)
+            # difference = np.around(difference, decimals=2)
+            a = (difference[0] * np.cos(end_pose[3])) + (difference[1] * np.sin(end_pose[3]))
+            difference[1] = (difference[1] * np.cos(end_pose[3])) - (difference[0] * np.sin(end_pose[3]))
+            difference[0] = a
+            for_twist = np.clip(difference, -1, 1)
+            twist.linear.x = for_twist[0]
+            twist.linear.y = for_twist[1]
+            twist.linear.z = for_twist[2]
+            twist.angular.z = for_twist[3]
+            self.pub.publish(twist)
+            current_pose = self.moniter_transform()
+            print(current_pose)
+            # publish the feedback
+            self._feedback.difference = difference
+            self._as.publish_feedback(self._feedback)
+
 
       
     def execute_cb(self, goal):
         # helper variables
         success = True
         
-        self._feedback.difference = [1]
-        
         # start executing the action
-        self.move_to_waypoint(goal.waypoint)
+        print('starting exec')
+        self.move_to_waypoint(np.array(goal.waypoint))
+        twist = Twist()
+        self.pub.publish(twist)
         # check that preempt has not been requested by the client
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
             self._as.set_preempted()
             success = False
-        
-        # publish the feedback
-        self._as.publish_feedback(self._feedback)
           
         if success:
             self._result.error = [2]

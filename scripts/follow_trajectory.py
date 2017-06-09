@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
@@ -10,43 +11,20 @@ import tf
 import actionlib
 import drone_application.msg
 import numpy as np
+from pose import pose
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
 
 take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
 land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
 
-# waypoints = [[0,0,0,0,0,0,1], [1,0,0,0,0,0,1], [2,0,0,0,0,0,1], [3,0,0,0,0,0,1]]
-waypoints = [[0,0,0,0], [1,0,0,0], [2,0,0,0], [3,0,0,0]]
-
-first_time = True
-
-def generate_trajectory(trans, rot, tf_listener):
-    global first_time
-    start_state = list()
-    if first_time:
-        start_state = [trans[0], trans[1], trans[2], 0, 0, 0]
-        first_time = False
-
+def generate_trajectory(waypoints):
     for waypoint in waypoints:
-        # print(waypoint)
-        euler = euler_from_quaternion((waypoint[3],
-                                      waypoint[4],
-                                      waypoint[5],
-                                      waypoint[6]
-                                      ))
-        # eular[2] is yaw
-        twist = Twist()
-        print(start_state[0] + waypoint[0], trans[0])
-        while (start_state[0] + waypoint[0]) > trans[0]:
-            twist.linear.x = 1
-            twist.linear.y = 0
-            twist.linear.z = 0
-            twist.angular.x = 0
-            pub.publish(twist)
-            trans, rot = moniter_transform(tf_listener)
-            print(start_state[0] + waypoint[0], trans[0])
-
+        print(waypoint)
+        print(type(waypoint))
+        result = send_goal(waypoint)
+        print(result)
+        # break
 
 def send_goal(waypoint):
     client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
@@ -60,22 +38,22 @@ def send_goal(waypoint):
     client.wait_for_result()
     return client.get_result()
 
+waypoints = deque()
+done_waypoints = False
 
-def callback(data):
-    pass
-    # quaternion = (data.pose.orientation.x,
-    #               data.pose.orientation.y,
-    #               data.pose.orientation.z,
-    #               data.pose.orientation.w
-    #               )
-    # euler = euler_from_quaternion(quaternion)
+def get_waypoints(data):
+    global waypoints, done_waypoints
 
-    # points_list = data.trajectory[0].multi_dof_joint_trajectory.points
+    points_list = data.trajectory[0].multi_dof_joint_trajectory.points
+    p = pose()
 
-    # waypoints = deque()
-    # for transform in points_list:
-    #     curr_waypoint = deque()
-    #     transform.transforms[0]
+    for transform in points_list:
+        p.convert_geometry_transform_to_pose(transform.transforms[0])
+        waypoints.append(list(p.as_waypoints()))
+        waypoints[-1][2] = waypoints[-1][2] + 3
+    done_waypoints = True
+
+    # generate_trajectory(waypoints)
 
     # START STATE INFORMATION
     # print(data.trajectory_start.multi_dof_joint_state.transforms[0])
@@ -90,9 +68,16 @@ def callback(data):
 if __name__ == '__main__':
     try:
         rospy.init_node('follow_trajectory', anonymous=True)
-        tf_listener = tf.TransformListener()
+        rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints)
 
-        send_goal(waypoints[1])
+        # waypoints = [[0,0,0,0,0,0,1], [1,0,0,0,0,0,1], [2,0,0,0,0,0,1], [3,0,0,0,0,0,1]]
+        # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
+        # waypoints = deque([[0,0,4,0], [1,0,4,0], [2,0,4,0], [3,0,4,0]])
+        while not done_waypoints:
+            pass
+        generate_trajectory(waypoints)
+
+        
 
         # while not rospy.is_shutdown():
         #     trans, rot = moniter_transform(tf_listener)
