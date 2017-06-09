@@ -16,15 +16,17 @@ pub_yaw = rospy.Publisher('plot_yaw', Float64, queue_size=5)
 
 error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
-def pid(data, state, aruco_front, yaw_set):
+def pid(data, state, aruco_front, yaw_set, set_array=None):
     current_time = time.time()
     dt = current_time - state['last_time']
-    if aruco_front:
-        set_array = np.array([1., 0., 0., 0.])
-    else:
-        set_array = np.array([0., 0., 1., 0.])
+    if set_array is None:
+        if aruco_front:
+            set_array = np.array([1., 0., 0., 0.])
+        else:
+            set_array = np.array([0., 0., 1., 0.])
     # set_array[3] = yaw_set
     # error = np.array([round(data[0], 2), round(data[1], 2), round(data[2], 2), round(data[3], 2)]) - set_array
+    print(set_array)
     error = np.array([data[0], data[1], data[2], data[3]]) - set_array
     error = np.around(error, decimals=2)
 
