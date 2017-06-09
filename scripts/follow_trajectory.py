@@ -18,16 +18,17 @@ pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
 take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
 land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
 
-def generate_trajectory(waypoints):
+def generate_trajectory(waypoints, client=None):
     for waypoint in waypoints:
         print(waypoint)
         print(type(waypoint))
-        result = send_goal(waypoint)
+        result = send_goal(waypoint, client)
         print(result)
         # break
 
-def send_goal(waypoint):
-    client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+def send_goal(waypoint, client=None):
+    if client is None:
+        client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
 
     client.wait_for_server()
     print('server_found')
@@ -70,9 +71,9 @@ if __name__ == '__main__':
         rospy.init_node('follow_trajectory', anonymous=True)
         rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints)
 
-        # waypoints = [[0,0,0,0,0,0,1], [1,0,0,0,0,0,1], [2,0,0,0,0,0,1], [3,0,0,0,0,0,1]]
         # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
-        # waypoints = deque([[0,0,4,0], [1,0,4,0], [2,0,4,0], [3,0,4,0]])
+        # waypoints = deque([[0,0,1,0], [1,0,1,0], [2,0,1,0]])
+
         while not done_waypoints:
             pass
         generate_trajectory(waypoints)

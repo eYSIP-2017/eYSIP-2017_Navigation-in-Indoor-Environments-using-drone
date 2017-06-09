@@ -26,6 +26,7 @@ class moveAction(object):
         while trans is None:
             try:
                 trans, rot = self.tf_listener.lookupTransform('/nav', '/base_link', rospy.Time(0))
+                # trans, rot = self.tf_listener.lookupTransform('/odom', '/ardrone_base_link', rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
         euler = tf.transformations.euler_from_quaternion(rot)
@@ -83,7 +84,11 @@ if __name__ == '__main__':
     try:
         rospy.init_node('move_to_waypoint')
         server = moveAction(rospy.get_name())
+        # rospy.Subscriber("/", , get_waypoints)
 
         rospy.spin()
     except rospy.ROSInterruptException:
         print('got exception')
+    finally:
+        twist = Twist()
+        server.pub()
