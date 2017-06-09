@@ -105,7 +105,7 @@ def get_pose_from_aruco(data):
         coords[2] = data.pose.position.x
         coords[1] = data.pose.position.y
         coords[0] = data.pose.position.z
-        coords[3] = euler[1]
+        coords[3] = -euler[1]
     else:
         coords[0] = data.pose.position.x
         coords[1] = data.pose.position.y
@@ -214,9 +214,9 @@ if __name__=="__main__":
                     result = ft.send_goal(waypoint, client)
                     print(result)
             elif key == 'p':
-                set_array = [0.5, 0.1 ,-0.1, 0]
+                # set_array = [0.5, 0.1 ,-0.1, 0]
                 while 1:
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set, set_array)
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 's':
