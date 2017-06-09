@@ -203,9 +203,20 @@ if __name__=="__main__":
                 take_off_pub.publish()
             elif key == 'g':
                 land_pub.publish()
+            elif key == 'w':
+                import follow_trajectory as ft
+                import actionlib
+                import drone_application.msg
+                client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+                waypoints = [[0,0,1,0], [1,0,1,0], [2,0,1,0]]
+                for waypoint in waypoints:
+                    print(waypoint)
+                    result = ft.send_goal(waypoint, client)
+                    print(result)
             elif key == 'p':
+                set_array = [0.5, 0.1 ,-0.1, 0]
                 while 1:
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set, set_array)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 's':
