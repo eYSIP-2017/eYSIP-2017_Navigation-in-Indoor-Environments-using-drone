@@ -21,7 +21,8 @@ def pid(data, state, aruco_front, yaw_set, set_array=None):
     dt = current_time - state['last_time']
     if set_array is None:
         if aruco_front:
-            set_array = np.array([1., 0., 0., 0.])
+            set_array = np.array([1., 0., 0., 0
+                ])
         else:
             set_array = np.array([0., 0., 1., 0.])
     # set_array[3] = yaw_set
@@ -57,7 +58,7 @@ def pid(data, state, aruco_front, yaw_set, set_array=None):
     #     # twist.linear.z = -f[2]
     #     twist.angular.z = -f[3]
     # else:
-    f = np.clip(f, -0.5, 0.5)
+    # f = np.clip(f, -0.5, 0.5)
     if aruco_front:
         twist.linear.x = -(f[0] * np.cos(error[3])) - (f[1] * np.sin(error[3]))
         twist.linear.y = (f[1] * np.cos(error[3])) - (f[0] * np.sin(error[3]))

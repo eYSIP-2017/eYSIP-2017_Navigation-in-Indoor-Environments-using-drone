@@ -35,6 +35,7 @@ from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
+from aruco_mapping.msg import *
 
 import sys, select, termios, tty
 from pid import pid
@@ -95,21 +96,21 @@ coords = np.array([0.0,0.0,0.0,0.0])
 
 def get_pose_from_aruco(data):
     global coords, yaw
-    quaternion = (data.pose.orientation.x,
-                  data.pose.orientation.y,
-                  data.pose.orientation.z,
-                  data.pose.orientation.w
+    quaternion = (data.global_camera_pose.orientation.x,
+                  data.global_camera_pose.orientation.y,
+                  data.global_camera_pose.orientation.z,
+                  data.global_camera_pose.orientation.w
                   )
     euler = euler_from_quaternion(quaternion)
     if aruco_front:
-        coords[2] = data.pose.position.x
-        coords[1] = data.pose.position.y
-        coords[0] = data.pose.position.z
-        coords[3] = -euler[1]
+        coords[2] = data.global_camera_pose.position.x
+        coords[0] = -data.global_camera_pose.position.y
+        coords[1] = -data.global_camera_pose.position.z
+        coords[3] = -euler[0]
     else:
-        coords[0] = data.pose.position.x
-        coords[1] = data.pose.position.y
-        coords[2] = data.pose.position.z
+        coords[0] = data.global_camera_pose.position.x
+        coords[1] = data.global_camera_pose.position.y
+        coords[2] = data.global_camera_pose.position.z
         coords[3] = euler[2]
     temp_pub.publish(coords[3])
 
@@ -139,6 +140,20 @@ def check_battery(data):
     if data.batteryPercent < 15:
         land_pub.publish()
 
+# tran_x = 0
+# tran_y = 0
+# tran_z = 0
+# def get_aruco_pose(temp_pose):
+#     # print(temp_pose.global_camera_pose.position.x)
+#     global tran_x
+#     tran_x = temp_pose.global_camera_pose.position.x
+#     global tran_y 
+#     tran_y = temp_pose.global_camera_pose.position.y
+#     global tran_z
+#     tran_z = temp_pose.global_camera_pose.position.z
+#     global ori_z 
+#     ori_z = temp_pose.global_camera_pose.orientation.z
+
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
@@ -148,7 +163,10 @@ if __name__=="__main__":
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
-    rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+    # rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+    rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
+
+    # rospy.Subscriber('aruco_poses', ArucoMarker, get_aruco_pose)
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
@@ -158,6 +176,8 @@ if __name__=="__main__":
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
     reset_pub = rospy.Publisher('/ardrone/reset', Empty, queue_size=5)
 
+    
+    ori_z = 0
     xyz = (0,0,0,0,0,0)
     th = 0
     status = 0
@@ -175,15 +195,15 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.3, 0.05, 0.4]
-        xy_pid_bottom = [0.2, 0., 0.2]
-        # xy_pid = [2, 0., 0.]
+        # xy_pid = [0.3, 0.0, 0.0]
+        xy_pid_bottom = [2, 0., 0.2]
+        xy_pid = [0.05, 0., 0.]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 2, 2], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.0], dtype=float)
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 0., 0.0], dtype=float)
         else:
-            state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.6], dtype=float)
+            state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.1], dtype=float)
             state['i'] = np.array([xy_pid_bottom[1], xy_pid_bottom[1], 0.1, 0.1], dtype=float)
             state['d'] = np.array([xy_pid_bottom[2], xy_pid_bottom[2], 1, 0.05], dtype=float)
 
@@ -215,8 +235,10 @@ if __name__=="__main__":
                     print(result)
             elif key == 'p':
                 # set_array = [0.5, 0.1 ,-0.1, 0]
+                # set_array = [tran_x, tran_y, tran_z, ori_z]
                 while 1:
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
+                    # set_array = [tran_x, tran_y, tran_z, ori_z]
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set) #, set_array)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 's':
@@ -272,7 +294,7 @@ if __name__=="__main__":
                     break
 
             # xyz = [xyz[i] * 0.5 for i in range(6)]
-            xyz = np.clip(np.array(xyz), -0.3, 0.3)
+            # xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]
