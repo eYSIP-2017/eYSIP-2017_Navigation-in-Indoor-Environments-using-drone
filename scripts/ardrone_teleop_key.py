@@ -133,6 +133,12 @@ def get_pose_from_next_aruco(data):
 #     current_time = data.tm
 #     dt = current_time - last_time
 #     last_time = current_time
+def get_aruco_pose(temp_pose):
+    marker_pose.store_marker_ids(temp_pose.marker_ids)
+    if marker_pose.get_current_marker_id() is not None:
+        marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(marker_pose.get_current_marker_id())])
+
+
 
 def get_angle_from_navdata(data):
     global coords
@@ -174,18 +180,16 @@ def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
-    marker_ids = marker_pose.return_marker_ids()
-    current_marker_id = 200
+    marker_pose = pose()
+    global_pose = pose()
     # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
-    # rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
-    # rospy.Subscriber('aruco_poses', ArucoMarker, get_aruco_pose)
 
-    rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
-    rospy.Subscriber('aruco_markers', ArucoMarker, get_pose_from_next_aruco)
+    rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+
     rospy.Subscriber('aruco_poses', ArucoMarker, get_aruco_pose)
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
@@ -256,40 +260,43 @@ if __name__=="__main__":
                     print(waypoint)
                     result = ft.send_goal(waypoint, client)
                     print(result)
-
             elif key == 'q':
+                max_found = False
+
                 while(1):
-                    min_found = False
-                    max_found = False
+                    marker_ids = marker_pose.get_marker_ids()
+                    # min_found = False
+                    if len(marker_ids) != 0:
+                        if max_found == True:
+                            current_marker_id = min(marker_ids)
 
-                    if max_found == True:
-                        current_marker_id = min(marker_ids)
+                        else:
+                            current_marker_id = max(marker_ids)
 
-                    else:
-                        current_marker_id = max(marker_ids)
+                        if current_marker_id == 201:
+                            max_found = True
 
-                    if current_marker_id == 201:
-                        max_found = True
-
-                    # goto(current_marker_id)
-
-
-                    if min_found == True:
-                        current_marker_id = max(marker_ids)
-
-                    else:
-                        current_marker_id = min(marker_ids)
-
-                    if current_marker_id == 200:
-                        min_found = True
+                        marker_pose.store_current_marker_id(current_marker_id)
 
                     set_array = marker_pose.as_waypoints()
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set, set_array)
+                    # print(max_found, set_array, marker_pose.get_current_marker_id())
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set,set_array)
                     pub.publish(pid_twist)
-
-            #     set_array = np.array([1, tran_y, 0, 0])
-            #     pid_twist, state = pid(coords, state, aruco_front, yaw_set, set_array)
-            #     pub.publish(pid_twist)
+                    key = getKey()
+                    if key == 'a':
+                        state['lastError'] = np.array([0.,0.,0.,0.])
+                        state['integral'] = np.array([0.,0.,0.,0.])
+                        state['derivative'] = np.array([0.,0.,0.,0.])
+                        xyz = (0,0,0,0,0,0)
+                        break
+                    elif key == 'f':
+                        print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
+                             state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))
+                        print('e - yaw;     d - z_axis;     c - xy_axis')
+                    elif key == 'g':
+                        land_pub.publish()
+                        xyz = (0,0,0,0,0,0)
+                        break
 
             elif key == 'p':
                 set_array = np.array([1, tran_y, 0, 0])

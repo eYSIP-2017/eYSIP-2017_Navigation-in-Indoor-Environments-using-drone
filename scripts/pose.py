@@ -38,12 +38,12 @@ class pose(object):
 
     def store_marker_ids(self, marker_ids):
        self.marker_ids = marker_ids
-       
-    def return_marker_ids(self):
+
+    def get_marker_ids(self):
        return self.marker_ids
 
     def store_current_marker_id(self, current_marker_id):
        self.current_marker_id = current_marker_id
-       
-    def return_current_marker_id(self):
+
+    def get_current_marker_id(self):
        return self.current_marker_id
