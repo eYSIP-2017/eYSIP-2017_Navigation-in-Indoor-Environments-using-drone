@@ -197,9 +197,9 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        # xy_pid = [1, 0.0, 0.0]
-        xy_pid_bottom = [2, 0., 0.2]
         xy_pid = [0.3, 0.05, 0.4]
+        xy_pid_bottom = [2, 0., 0.2]
+        # xy_pid = [1, 0.0, 0.0]
         if aruco_front:
             state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
             state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
@@ -259,10 +259,16 @@ if __name__=="__main__":
                         # print(marker_ids)
 
                     set_array = marker_pose.as_waypoints()
-                    set_array[0] += 1
+                    set_array[0] += 1.5
                     # print(max_found, set_array, marker_pose.get_current_marker_id())
-                    pid_twist, state = pid(global_pose.as_waypoints(), state, aruco_front, yaw_set, set_array)
-                    pub.publish(pid_twist)
+                    current_pose = global_pose.as_waypoints()
+                    if (current_pose == np.array([0., 0., 0., 0.])).all():
+                        twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
+                        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
+                        pub.publish(twist)
+                    else:
+                        pid_twist, state = pid(current_pose, state, aruco_front, yaw_set, set_array)
+                        pub.publish(pid_twist)
                     key = getKey()
                     if key == 'a':
                         state['lastError'] = np.array([0.,0.,0.,0.])
