@@ -98,47 +98,6 @@ def getKey():
 speed = .2
 turn = 1
 
-# coords = np.array([0.0,0.0,0.0,0.0])
-
-# def get_pose_from_aruco(data):
-#     global coords, yaw
-#     quaternion = (data.global_camera_pose.orientation.x,
-#                   data.global_camera_pose.orientation.y,
-#                   data.global_camera_pose.orientation.z,
-#                   data.global_camera_pose.orientation.w
-#                   )
-#     euler = euler_from_quaternion(quaternion)
-#     if aruco_front:
-#         coords[2] = data.global_camera_pose.position.x
-#         coords[0] = -data.global_camera_pose.position.y
-#         coords[1] = -data.global_camera_pose.position.z
-#         coords[3] = -euler[0]
-#     else:
-#         coords[0] = data.global_camera_pose.position.x
-#         coords[1] = data.global_camera_pose.position.y
-#         coords[2] = data.global_camera_pose.position.z
-#         coords[3] = euler[2]
-    # temp_pub.publish(coords[3])
-
-tran_y = 0 
-def get_pose_from_next_aruco(data):
-    global tran_y
-    tran_y = data.pose.position.y
-    print(tran_y)
-# dt = 0.
-# last_time = -0.00000000000000001
-
-# def get_time_from_navdata(data):
-#     global dt, last_time
-#     current_time = data.tm
-#     dt = current_time - last_time
-#     last_time = current_time
-def get_aruco_pose(temp_pose):
-    marker_pose.store_marker_ids(temp_pose.marker_ids)
-    if marker_pose.get_current_marker_id() is not None:
-        marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(marker_pose.get_current_marker_id())])
-
-
 
 def get_angle_from_navdata(data):
     global coords
@@ -159,30 +118,24 @@ def check_battery(data):
 
 coords = np.array([0.0,0.0,0.0,0.0])
 
+max_found = False
+
 def get_aruco_pose(temp_pose):
+    global max_found
     marker_pose.store_marker_ids(temp_pose.marker_ids)
-    if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
-        marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(marker_pose.get_current_marker_id())])
+    if len(temp_pose.marker_ids) != 0:
+        if max_found == True:
+            current_marker_id = min(temp_pose.marker_ids)
+        else:
+            current_marker_id = max(temp_pose.marker_ids)
 
+        if current_marker_id == 16:
+            max_found = True
+    # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
+        marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
 
-    global coords, yaw
-    quaternion = (temp_pose.global_camera_pose.orientation.x,
-                  temp_pose.global_camera_pose.orientation.y,
-                  temp_pose.global_camera_pose.orientation.z,
-                  temp_pose.global_camera_pose.orientation.w
-                  )
-    euler = euler_from_quaternion(quaternion)
-    if aruco_front:
-        coords[2] = temp_pose.global_camera_pose.position.x
-        coords[0] = -temp_pose.global_camera_pose.position.y
-        coords[1] = -temp_pose.global_camera_pose.position.z
-        coords[3] = -euler[0]
-    else:
-        coords[0] = temp_pose.global_camera_pose.position.x
-        coords[1] = temp_pose.global_camera_pose.position.y
-        coords[2] = temp_pose.global_camera_pose.position.z
-        coords[3] = euler[2]
-    temp_pub.publish(coords[3])
+    global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
+
 
 # set_array = None
 # def get_aruco_pose(temp_pose):
@@ -244,13 +197,16 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        # xy_pid = [0.3, 0.0, 0.0]
+        # xy_pid = [1, 0.0, 0.0]
         xy_pid_bottom = [2, 0., 0.2]
         xy_pid = [0.3, 0.05, 0.4]
         if aruco_front:
             state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
             state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
             state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
+            # state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
+            # state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.], dtype=float)
+            # state['d'] = np.array([xy_pid[2], xy_pid[2], 0, 0.], dtype=float)
         else:
             state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.5], dtype=float)
             state['i'] = np.array([xy_pid_bottom[1], xy_pid_bottom[1], 0.1, 0.1], dtype=float)
@@ -283,41 +239,29 @@ if __name__=="__main__":
                     result = ft.send_goal(waypoint, client)
                     print(result)
             elif key == 'q':
-                max_found = False
+                # max_found = False
                 # min_found = False
                 # marker_ids = marker_pose.get_marker_ids()
                 while(1):
-                    marker_ids = marker_pose.get_marker_ids()
                     # min_found = False
-                    if len(marker_ids) != 0:
-                        if max_found == True:
-                            current_marker_id = min(marker_ids)
+                    # if len(marker_ids) != 0:
+                    #     if max_found == True:
+                    #         current_marker_id = min(marker_ids)
 
-                        else:
-                            current_marker_id = max(marker_ids)
+                    #     else:
+                    #         current_marker_id = max(marker_ids)
 
-                        if current_marker_id == 16:
-                            max_found = True
-                       
-                        # if min_found ==True:
-                        #     current_marker_id = max(marker_ids)
-
-                        # else:
-                        #     current_marker_id = min(marker_ids)
-
-                        # if current_marker_id == 12:
-                        #     min_found = True
+                    #     if current_marker_id == 16:
+                    #         max_found = True
 
 
-                        print(current_marker_id)
-                        print(marker_ids)
-
-   
-                        marker_pose.store_current_marker_id(current_marker_id)
+                        # print(current_marker_id)
+                        # print(marker_ids)
 
                     set_array = marker_pose.as_waypoints()
+                    set_array[0] += 1
                     # print(max_found, set_array, marker_pose.get_current_marker_id())
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set,set_array)
+                    pid_twist, state = pid(global_pose.as_waypoints(), state, aruco_front, yaw_set, set_array)
                     pub.publish(pid_twist)
                     key = getKey()
                     if key == 'a':
@@ -401,7 +345,7 @@ if __name__=="__main__":
                     break
 
             # xyz = [xyz[i] * 0.5 for i in range(6)]
-            # xyz = np.clip(np.array(xyz), -0.3, 0.3)
+            xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]

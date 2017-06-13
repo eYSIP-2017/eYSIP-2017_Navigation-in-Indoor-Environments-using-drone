@@ -12,6 +12,9 @@ class pose(object):
         self.marker_ids = list()
         self.current_marker_id = None
 
+    def __str__(self):
+        print("x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw))
+
     def convert_geometry_transform_to_pose(self, transform):
         try:
             euler = euler_from_quaternion((transform.rotation.x,
@@ -29,9 +32,9 @@ class pose(object):
                                             transform.orientation.w
                                             ))
             self.z = transform.position.x
-            self.x = -transform.position.y
-            self.y = -transform.position.z
-        self.yaw = -euler[0]
+            self.x = transform.position.z
+            self.y = -transform.position.y
+        self.yaw = euler[1]
 
     def as_waypoints(self):
         return np.around(np.array([self.x, self.y, self.z, self.yaw]), decimals=3)

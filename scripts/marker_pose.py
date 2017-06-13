@@ -21,6 +21,9 @@ def get_aruco_pose(temp_pose):
     if marker_pose.get_current_marker_id() is not None:
         marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(marker_pose.get_current_marker_id())])
 
+    global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
+    print(global_pose.as_waypoints())
+
     
 
 
@@ -45,32 +48,33 @@ if __name__ == '__main__':
     global_pose = pose()
 
     max_found = False
+    rospy.spin()
 
-    while(1):
-        marker_ids = marker_pose.get_marker_ids()
-        # min_found = False
-        if len(marker_ids) != 0:
-            if max_found == True:
-                current_marker_id = min(marker_ids)
+    # while(1):
+    #     marker_ids = marker_pose.get_marker_ids()
+    #     # min_found = False
+    #     if len(marker_ids) != 0:
+    #         if max_found == True:
+    #             current_marker_id = min(marker_ids)
 
-            else:
-                current_marker_id = max(marker_ids)
+    #         else:
+    #             current_marker_id = max(marker_ids)
 
-            if current_marker_id == 201:
-                max_found = True
-            marker_pose.store_current_marker_id(current_marker_id)
+    #         if current_marker_id == 201:
+    #             max_found = True
+    #         marker_pose.store_current_marker_id(current_marker_id)
 
-        # goto(current_marker_id)
+    #     # goto(current_marker_id)
 
 
-        # if min_found == True:
-        #     current_marker_id = max(marker_ids)
+    #     # if min_found == True:
+    #     #     current_marker_id = max(marker_ids)
 
-        # else:
-        #     current_marker_id = min(marker_ids)
+    #     # else:
+    #     #     current_marker_id = min(marker_ids)
 
-        # if current_marker_id == 12:
-        #     min_found = True
+    #     # if current_marker_id == 12:
+    #     #     min_found = True
 
-        set_array = marker_pose.as_waypoints()
-        print(max_found, set_array, marker_pose.get_current_marker_id())
+    #     set_array = marker_pose.as_waypoints()
+    #     print(max_found, set_array, marker_pose.get_current_marker_id())
