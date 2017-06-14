@@ -242,33 +242,30 @@ if __name__=="__main__":
                 # max_found = False
                 # min_found = False
                 # marker_ids = marker_pose.get_marker_ids()
+                last_twist = Twist()
+                feed_stuck_count = 0
+                twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
+                twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
                 while(1):
-                    # min_found = False
-                    # if len(marker_ids) != 0:
-                    #     if max_found == True:
-                    #         current_marker_id = min(marker_ids)
-
-                    #     else:
-                    #         current_marker_id = max(marker_ids)
-
-                    #     if current_marker_id == 16:
-                    #         max_found = True
-
-
-                        # print(current_marker_id)
-                        # print(marker_ids)
-
                     set_array = marker_pose.as_waypoints()
                     set_array[0] += 1.5
                     # print(max_found, set_array, marker_pose.get_current_marker_id())
                     current_pose = global_pose.as_waypoints()
                     if (current_pose == np.array([0., 0., 0., 0.])).all():
-                        twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-                        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
                         pub.publish(twist)
                     else:
                         pid_twist, state = pid(current_pose, state, aruco_front, yaw_set, set_array)
-                        pub.publish(pid_twist)
+                        
+                        if last_twist == pid_twist:
+                            feed_stuck_count += 1
+
+                        if feed_stuck_count > 2:
+                            pub.publish(twist)
+                            feed_stuck_count = 0
+                        else:
+                            pub.publish(pid_twist)
+
+                        last_twist = pid_twist
                     key = getKey()
                     if key == 'a':
                         state['lastError'] = np.array([0.,0.,0.,0.])
