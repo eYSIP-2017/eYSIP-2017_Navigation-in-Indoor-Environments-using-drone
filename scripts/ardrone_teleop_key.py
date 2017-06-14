@@ -129,7 +129,7 @@ def get_aruco_pose(temp_pose):
         else:
             current_marker_id = max(temp_pose.marker_ids)
 
-        if current_marker_id == 16:
+        if current_marker_id == 18:
             max_found = True
     # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
         marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
@@ -197,13 +197,13 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.2, 0.01, 0.05]
+        xy_pid = [0.3, 0.005, 0.03]
         xy_pid_bottom = [2, 0., 0.2]
         # xy_pid = [1, 0.0, 0.0]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.7, 0.], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.005, 0.0], dtype=float)
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.1, 0.0], dtype=float)
             # state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
             # state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.], dtype=float)
             # state['d'] = np.array([xy_pid[2], xy_pid[2], 0, 0.], dtype=float)
@@ -262,6 +262,7 @@ if __name__=="__main__":
                         if feed_stuck_count > 2:
                             pub.publish(twist)
                             feed_stuck_count = 0
+                            print('feed stuck!!!')
                         else:
                             pub.publish(pid_twist)
 
