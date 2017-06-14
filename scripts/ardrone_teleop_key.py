@@ -197,7 +197,7 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.3, 0.05, 0.4]
+        xy_pid = [0.2, 0.01, 0.05]
         xy_pid_bottom = [2, 0., 0.2]
         # xy_pid = [1, 0.0, 0.0]
         if aruco_front:
