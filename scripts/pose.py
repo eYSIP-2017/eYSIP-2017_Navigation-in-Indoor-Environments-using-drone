@@ -13,7 +13,7 @@ class pose(object):
         self.current_marker_id = None
 
     def __str__(self):
-        print("x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw))
+        return "x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw)
 
     def convert_geometry_transform_to_pose(self, transform):
         try:
