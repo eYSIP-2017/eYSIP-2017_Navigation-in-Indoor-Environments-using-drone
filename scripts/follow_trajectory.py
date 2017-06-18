@@ -51,7 +51,7 @@ def get_waypoints(data):
     for transform in points_list:
         p.convert_geometry_transform_to_pose(transform.transforms[0])
         waypoints.append(list(p.as_waypoints()))
-        waypoints[-1][2] = waypoints[-1][2] + 3
+        # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
 
     # generate_trajectory(waypoints)
