@@ -118,19 +118,17 @@ def check_battery(data):
 
 coords = np.array([0.0,0.0,0.0,0.0])
 
-max_found = False
-
 def get_aruco_pose(temp_pose):
-    global max_found
+    
     marker_pose.store_marker_ids(temp_pose.marker_ids)
     if len(temp_pose.marker_ids) != 0:
-        if max_found == True:
+        if marker_pose.get_max_found():
             current_marker_id = min(temp_pose.marker_ids)
         else:
             current_marker_id = max(temp_pose.marker_ids)
 
         if current_marker_id == 17:
-            max_found = True
+            marker_pose.set_max_found(True)
     # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
         marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
 
@@ -197,13 +195,13 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.15, 0.0025, 0.025]
+        xy_pid = [0.3, 0.005, 0.05]
         xy_pid_bottom = [2, 0., 0.2]
         # xy_pid = [1, 0.0, 0.0]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.], dtype=float)
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.1], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.6, 0.0], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.005, 0.0], dtype=float)
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
             # state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
             # state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.], dtype=float)
             # state['d'] = np.array([xy_pid[2], xy_pid[2], 0, 0.], dtype=float)
@@ -244,8 +242,8 @@ if __name__=="__main__":
                 # marker_ids = marker_pose.get_marker_ids()
                 last_twist = np.zeros(4)
                 feed_stuck_count = 0
-                twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-                twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
+                last_twist.linear.x = 0; last_twist.linear.y = 0; last_twist.linear.z = 0
+                last_twist.angular.x = 0; last_twist.angular.y = 0; last_twist.angular.z = 0
                 while(1):
                     set_array = marker_pose.as_waypoints()
                     set_array[0] += 1.5
@@ -270,7 +268,7 @@ if __name__=="__main__":
                         print('feed stuck!!!')
                     else:
                         pub.publish(pid_twist)
-
+                        
                     last_twist[0] = pid_twist.linear.x
                     last_twist[1] = pid_twist.linear.y
                     last_twist[2] = pid_twist.linear.z
@@ -297,7 +295,7 @@ if __name__=="__main__":
                 # set_array = [coords[0], coords[1], coords[2], coords[3]]
                 while 1:
                     set_array = np.array([1, tran_y, 0, 0])
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set, set_array)
+                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
                     pub.publish(pid_twist)
 
                     # set_array = [tran_x, tran_y, tran_z, ori_z]
