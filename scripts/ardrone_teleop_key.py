@@ -36,7 +36,7 @@ from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
 from aruco_mapping.msg import *
-from pose import pose
+from pose import Pose
 
 import sys, select, termios, tty
 from pid import pid
@@ -79,10 +79,6 @@ moveBindings = {
         # stop
         'm':((0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
            }
-
-
-marker_pose = pose()
-global_pose = pose()
 
 def getKey():
     tty.setraw(sys.stdin.fileno())
@@ -138,26 +134,13 @@ def get_pose_from_aruco(temp_pose):
 
 
 
-# set_array = None
-# def get_aruco_pose(temp_pose):
-#     global tran_x
-#     quaternion = (temp_pose.global_camera_pose.orientation.x,
-#                   temp_pose.global_camera_pose.orientation.y,
-#                   temp_pose.global_camera_pose.orientation.z,
-#                   temp_pose.global_camera_pose.orientation.w
-#                   )
-#     euler = euler_from_quaternion(quaternion)
-#     coords[0] = temp_pose.global_camera_pose.position.x
-#     coords[1] = temp_pose.global_camera_pose.position.y
-#     coords[2] = temp_pose.global_camera_pose.position.z
-    # coords[3] = euler[0] #temp_pose.global_camera_pose.orientation.z
 
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
-    marker_pose = pose()
-    global_pose = pose()
+    marker_pose = Pose()
+    global_pose = Pose()
     # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
@@ -179,8 +162,6 @@ if __name__=="__main__":
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
     reset_pub = rospy.Publisher('/ardrone/reset', Empty, queue_size=5)
 
-    marker_pose = pose()
-    global_pose = pose()
     marker_ids = marker_pose.get_marker_ids()
 
     ori_z = 0
@@ -201,14 +182,14 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            # xy_pid = [1, 0.0, 0.0]
+            xy_pid = [1, 0.0, 0.0]
             if aruco_mapping:
                 xy_pid = [0.3, 0.005, 0.05]
-                state['p'] = np.array([xy_pid[0], xy_pid[0], 0.6, 0.0], dtype=float)
+                state['p'] = np.array([xy_pid[0], xy_pid[0], 0.6, 1.0], dtype=float)
                 state['i'] = np.array([xy_pid[1], xy_pid[1], 0.005, 0.0], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
             else:
-                xy_pid = [0.3, 0.05, 0.4]
+                # xy_pid = [0.3, 0.05, 0.4]
                 state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
                 state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
@@ -276,6 +257,7 @@ if __name__=="__main__":
                         last_twist[2] = pid_twist.linear.z
                         last_twist[3] = pid_twist.angular.z
                     else:
+                        current_pose = global_pose.as_waypoints()
                         pid_twist, state = pid(current_pose, state, aruco_front)
                         pub.publish(pid_twist)
 
