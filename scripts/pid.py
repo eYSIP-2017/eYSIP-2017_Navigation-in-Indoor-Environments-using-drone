@@ -26,7 +26,7 @@ def pid(data, state, aruco_front, yaw_set, set_array=None):
             set_array = np.array([0., 0., 1., 0.])
     # set_array[3] = yaw_set
     # error = np.array([round(data[0], 2), round(data[1], 2), round(data[2], 2), round(data[3], 2)]) - set_array
-    print(set_array)
+    # print(set_array)
     error = set_array - np.array([data[0], data[1], data[2], data[3]])
     error = np.around(error, decimals=2)
 

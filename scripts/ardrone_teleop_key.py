@@ -129,7 +129,7 @@ def get_aruco_pose(temp_pose):
         else:
             current_marker_id = max(temp_pose.marker_ids)
 
-        if current_marker_id == 18:
+        if current_marker_id == 17:
             max_found = True
     # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
         marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
@@ -197,13 +197,13 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.3, 0.005, 0.03]
+        xy_pid = [0.15, 0.0025, 0.025]
         xy_pid_bottom = [2, 0., 0.2]
         # xy_pid = [1, 0.0, 0.0]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.7, 0.], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.005, 0.0], dtype=float)
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.1, 0.0], dtype=float)
+            state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1], dtype=float)
+            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.], dtype=float)
+            state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.1], dtype=float)
             # state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
             # state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.], dtype=float)
             # state['d'] = np.array([xy_pid[2], xy_pid[2], 0, 0.], dtype=float)
@@ -242,7 +242,7 @@ if __name__=="__main__":
                 # max_found = False
                 # min_found = False
                 # marker_ids = marker_pose.get_marker_ids()
-                last_twist = Twist()
+                last_twist = np.zeros(4)
                 feed_stuck_count = 0
                 twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
                 twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
@@ -251,24 +251,32 @@ if __name__=="__main__":
                     set_array[0] += 1.5
                     # print(max_found, set_array, marker_pose.get_current_marker_id())
                     current_pose = global_pose.as_waypoints()
-                    if (current_pose == np.array([0., 0., 0., 0.])).all():
-                        pub.publish(twist)
-                    else:
-                        pid_twist, state = pid(current_pose, state, aruco_front, yaw_set, set_array)
+                    # if (current_pose == np.array([0., 0., 0., 0.])).all():
+                    #     pub.publish(twist)
+                    # else:
+                    pid_twist, state = pid(current_pose, state, aruco_front, yaw_set, set_array)
+                        # print(last_twist.linear.x, pid_twist.linear.x)
+                        # print(last_twist.linear.y, pid_twist.linear.y)
+                        # print(last_twist.linear.z, pid_twist.linear.z)
+                        # print(last_twist.angular.z, pid_twist.angular.z)
+                        # print('next')
                         
-                        if last_twist == pid_twist:
-                            feed_stuck_count += 1
+                    if (last_twist == np.array([pid_twist.linear.x, pid_twist.linear.y, pid_twist.linear.z, pid_twist.angular.z])).all():
+                        feed_stuck_count += 1
 
-                        if feed_stuck_count > 2:
-                            pub.publish(twist)
-                            feed_stuck_count = 0
-                            print('feed stuck!!!')
-                        else:
-                            pub.publish(pid_twist)
+                    if feed_stuck_count > 2:
+                        pub.publish(twist)
+                        feed_stuck_count = 0
+                        print('feed stuck!!!')
+                    else:
+                        pub.publish(pid_twist)
 
-                        last_twist = pid_twist
+                    last_twist[0] = pid_twist.linear.x
+                    last_twist[1] = pid_twist.linear.y
+                    last_twist[2] = pid_twist.linear.z
+                    last_twist[3] = pid_twist.angular.z
                     key = getKey()
-                    if key == 'a':
+                    if key == 's':
                         state['lastError'] = np.array([0.,0.,0.,0.])
                         state['integral'] = np.array([0.,0.,0.,0.])
                         state['derivative'] = np.array([0.,0.,0.,0.])
