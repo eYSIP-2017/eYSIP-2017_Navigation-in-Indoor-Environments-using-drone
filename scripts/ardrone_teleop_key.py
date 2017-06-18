@@ -118,21 +118,24 @@ def check_battery(data):
 
 coords = np.array([0.0,0.0,0.0,0.0])
 
-def get_aruco_pose(temp_pose):
-    
-    marker_pose.store_marker_ids(temp_pose.marker_ids)
-    if len(temp_pose.marker_ids) != 0:
-        if marker_pose.get_max_found():
-            current_marker_id = min(temp_pose.marker_ids)
-        else:
-            current_marker_id = max(temp_pose.marker_ids)
+def get_pose_from_aruco(temp_pose):
+    if aruco_mapping:
+        marker_pose.store_marker_ids(temp_pose.marker_ids)
+        if len(temp_pose.marker_ids) != 0:
+            if marker_pose.get_max_found():
+                current_marker_id = min(temp_pose.marker_ids)
+            else:
+                current_marker_id = max(temp_pose.marker_ids)
 
-        if current_marker_id == 17:
-            marker_pose.set_max_found(True)
-    # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
-        marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
+            if current_marker_id == 17:
+                marker_pose.set_max_found(True)
+        # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
+            marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)], aruco_mapping, aruco_front)
 
-    global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
+        global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose, aruco_mapping, aruco_front)
+    else:
+        global_pose.convert_geometry_transform_to_pose(temp_pose.pose, aruco_mapping, aruco_front)
+
 
 
 # set_array = None
@@ -159,11 +162,14 @@ if __name__=="__main__":
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
+    aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
 
-    # rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+    if aruco_mapping:
+        rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
+    else:
+        rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
 
-    rospy.Subscriber('aruco_poses', ArucoMarker, get_aruco_pose)
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
