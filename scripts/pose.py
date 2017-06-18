@@ -11,21 +11,13 @@ class pose(object):
         self.yaw = yaw
         self.marker_ids = list()
         self.current_marker_id = None
+        self.max_found = False
 
     def __str__(self):
         return "x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw)
 
-    def convert_geometry_transform_to_pose(self, transform):
-        try:
-            euler = euler_from_quaternion((transform.rotation.x,
-                                            transform.rotation.y,
-                                            transform.rotation.z,
-                                            transform.rotation.w
-                                            ))
-            self.x = transform.translation.x
-            self.y = transform.translation.y
-            self.z = transform.translation.z
-        except AttributeError:
+    def convert_geometry_transform_to_pose(self, transform, aruco_mapping, aruco_front):
+        if aruco_mapping:
             euler = euler_from_quaternion((transform.orientation.x,
                                             transform.orientation.y,
                                             transform.orientation.z,
@@ -34,7 +26,23 @@ class pose(object):
             self.z = transform.position.x
             self.x = transform.position.z
             self.y = -transform.position.y
-        self.yaw = euler[1]
+            self.yaw = euler[1]
+        else:
+            euler = euler_from_quaternion((transform.rotation.x,
+                                            transform.rotation.y,
+                                            transform.rotation.z,
+                                            transform.rotation.w
+                                            ))
+            if aruco_front:
+                self.x = transform.translation.z
+                self.y = transform.translation.y
+                self.z = transform.translation.x
+                self.yaw = -euler[1]
+            else:
+                self.x = transform.translation.x
+                self.y = transform.translation.y
+                self.z = transform.translation.z
+                self.yaw = euler[2]
 
     def as_waypoints(self):
         return np.around(np.array([self.x, self.y, self.z, self.yaw]), decimals=3)
@@ -50,3 +58,9 @@ class pose(object):
 
     def get_current_marker_id(self):
        return self.current_marker_id
+
+    def get_max_found(self):
+        return self.max_found
+
+    def set_max_found(self, max_found):
+        self.max_found = max_found
