@@ -120,6 +120,9 @@ def get_pose_from_aruco(temp_pose):
         if len(temp_pose.marker_ids) != 0:
             if marker_pose.get_max_found():
                 current_marker_id = min(temp_pose.marker_ids)
+                if current_marker_id == 12:
+                    pub.publish(twist)
+                    land_pub.publish()
             else:
                 current_marker_id = max(temp_pose.marker_ids)
 
@@ -182,14 +185,14 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            xy_pid = [1, 0.0, 0.0]
+            # xy_pid = [1, 0.0, 0.0]
             if aruco_mapping:
-                xy_pid = [0.3, 0.005, 0.05]
-                state['p'] = np.array([xy_pid[0], xy_pid[0], 0.6, 1.0], dtype=float)
-                state['i'] = np.array([xy_pid[1], xy_pid[1], 0.005, 0.0], dtype=float)
+                xy_pid = [0.15, 0.0025, 0.025]
+                state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
+                state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
             else:
-                # xy_pid = [0.3, 0.05, 0.4]
+                xy_pid = [0.3, 0.05, 0.4]
                 state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
                 state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
