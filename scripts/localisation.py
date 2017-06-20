@@ -30,7 +30,7 @@ def update_measurement_in_state(state_matrix, process_covariance_matrix):
     #measurement_error_covariance_matrix = np.matrix('100,100,30; 100,100,30; 30,30,9', dtype = 'float')
     measurement_error = np.matrix('0.1; 0.1; 0.03',dtype = 'float')
     measurement_error_covariance_matrix = measurement_error * measurement_error.T
-    I = numpy.eye(5)
+    I = np.eye(5)
     measurement_matrix = control_values[count].T
     count += 1
     #kalman_gain = np.matrix()
@@ -73,4 +73,5 @@ def predict_next_state(state_matrix, process_covariance_matrix):
     update_measurement_in_state(state_matrix, process_covariance_matrix)
 
 
-run_kalman_filter()
+if __name__ == '__main__':
+    run_kalman_filter()
