@@ -35,10 +35,14 @@ from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
+from aruco_mapping.msg import *
+from pose import Pose
 
 import sys, select, termios, tty
 from pid import pid
 import numpy as np
+
+
 
 msg = """
 Control Your AR Drone!
@@ -76,7 +80,6 @@ moveBindings = {
         'm':((0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
            }
 
-
 def getKey():
     tty.setraw(sys.stdin.fileno())
     rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
@@ -91,36 +94,6 @@ def getKey():
 speed = .2
 turn = 1
 
-coords = np.array([0.0,0.0,0.0,0.0])
-
-def get_pose_from_aruco(data):
-    global coords, yaw
-    quaternion = (data.pose.orientation.x,
-                  data.pose.orientation.y,
-                  data.pose.orientation.z,
-                  data.pose.orientation.w
-                  )
-    euler = euler_from_quaternion(quaternion)
-    if aruco_front:
-        coords[2] = data.pose.position.x
-        coords[1] = data.pose.position.y
-        coords[0] = data.pose.position.z
-        coords[3] = -euler[1]
-    else:
-        coords[0] = data.pose.position.x
-        coords[1] = data.pose.position.y
-        coords[2] = data.pose.position.z
-        coords[3] = euler[2]
-    temp_pub.publish(coords[3])
-
-# dt = 0.
-# last_time = -0.00000000000000001
-
-# def get_time_from_navdata(data):
-#     global dt, last_time
-#     current_time = data.tm
-#     dt = current_time - last_time
-#     last_time = current_time
 
 def get_angle_from_navdata(data):
     global coords
@@ -139,16 +112,50 @@ def check_battery(data):
     if data.batteryPercent < 15:
         land_pub.publish()
 
+coords = np.array([0.0,0.0,0.0,0.0])
+
+def get_pose_from_aruco(temp_pose):
+    if aruco_mapping:
+        marker_pose.store_marker_ids(temp_pose.marker_ids)
+        if len(temp_pose.marker_ids) != 0:
+            if marker_pose.get_max_found():
+                current_marker_id = min(temp_pose.marker_ids)
+                if current_marker_id == 12:
+                    pub.publish(twist)
+                    land_pub.publish()
+            else:
+                current_marker_id = max(temp_pose.marker_ids)
+
+            if current_marker_id == 17:
+                marker_pose.set_max_found(True)
+        # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
+            marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)], aruco_mapping, aruco_front)
+
+        global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose, aruco_mapping, aruco_front)
+    else:
+        global_pose.convert_geometry_transform_to_pose(temp_pose.pose, aruco_mapping, aruco_front)
+
+
+
+
 def vels(speed,turn):
     return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
+    marker_pose = Pose()
+    global_pose = Pose()
     # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
+    aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
-    rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+
+    if aruco_mapping:
+        rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
+    else:
+        rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
+
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
     # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
     
@@ -158,10 +165,12 @@ if __name__=="__main__":
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
     reset_pub = rospy.Publisher('/ardrone/reset', Empty, queue_size=5)
 
+    marker_ids = marker_pose.get_marker_ids()
+
+    ori_z = 0
     xyz = (0,0,0,0,0,0)
     th = 0
     status = 0
-    count = 0
     acc = 0.1
     target_speed = 0
     target_turn = 0
@@ -175,15 +184,24 @@ if __name__=="__main__":
         state['lastError'] = np.array([0.,0.,0.,0.])
 
         # values of x and y may remain same
-        xy_pid = [0.3, 0.05, 0.4]
-        xy_pid_bottom = [0.2, 0., 0.2]
-        # xy_pid = [2, 0., 0.]
         if aruco_front:
-            state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
-            state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
-            state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
+            # xy_pid = [1, 0.0, 0.0]
+            if aruco_mapping:
+                xy_pid = [0.15, 0.0025, 0.025]
+                state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
+                state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
+                state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
+            else:
+                xy_pid = [0.3, 0.05, 0.4]
+                state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
+                state['i'] = np.array([xy_pid[1], xy_pid[1], 0.1, 0.1], dtype=float)
+                state['d'] = np.array([xy_pid[2], xy_pid[2], 1, 0.05], dtype=float)
+            # state['p'] = np.array([xy_pid[0], xy_pid[0], 1, 0.6], dtype=float)
+            # state['i'] = np.array([xy_pid[1], xy_pid[1], 0., 0.], dtype=float)
+            # state['d'] = np.array([xy_pid[2], xy_pid[2], 0, 0.], dtype=float)
         else:
-            state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.6], dtype=float)
+            xy_pid_bottom = [2, 0., 0.2]
+            state['p'] = np.array([xy_pid_bottom[0], xy_pid_bottom[0], 1, 0.5], dtype=float)
             state['i'] = np.array([xy_pid_bottom[1], xy_pid_bottom[1], 0.1, 0.1], dtype=float)
             state['d'] = np.array([xy_pid_bottom[2], xy_pid_bottom[2], 1, 0.05], dtype=float)
 
@@ -198,7 +216,6 @@ if __name__=="__main__":
             key = getKey()
             if key in moveBindings.keys():
                 xyz = moveBindings[key]
-                count = 0
             elif key == 't':
                 take_off_pub.publish()
             elif key == 'g':
@@ -213,11 +230,40 @@ if __name__=="__main__":
                     print(waypoint)
                     result = ft.send_goal(waypoint, client)
                     print(result)
+                    
             elif key == 'p':
-                # set_array = [0.5, 0.1 ,-0.1, 0]
+                last_twist = np.zeros(4)
+                marker_not_detected_count = 0
                 while 1:
-                    pid_twist, state = pid(coords, state, aruco_front, yaw_set)
-                    pub.publish(pid_twist)
+                    if aruco_mapping:
+                        set_array = marker_pose.as_waypoints()
+                        set_array[0] += 1.5
+                        current_pose = global_pose.as_waypoints()
+
+                        pid_twist, state = pid(current_pose, state, aruco_front, set_array)
+
+                        if (current_pose == np.array([0., 0., 0., 0.])).all():
+                            marker_not_detected_count += 1
+                            
+                        if (last_twist == np.array([pid_twist.linear.x, pid_twist.linear.y, pid_twist.linear.z, pid_twist.angular.z])).all():
+                            marker_not_detected_count += 1
+
+                        if marker_not_detected_count > 2:
+                            pub.publish(twist)
+                            marker_not_detected_count = 0
+                            print('feed stuck!!!')
+                        else:
+                            pub.publish(pid_twist)
+                            
+                        last_twist[0] = pid_twist.linear.x
+                        last_twist[1] = pid_twist.linear.y
+                        last_twist[2] = pid_twist.linear.z
+                        last_twist[3] = pid_twist.angular.z
+                    else:
+                        current_pose = global_pose.as_waypoints()
+                        pid_twist, state = pid(current_pose, state, aruco_front)
+                        pub.publish(pid_twist)
+
                     key = getKey()
                     if key == 's':
                         state['lastError'] = np.array([0.,0.,0.,0.])
@@ -232,6 +278,9 @@ if __name__=="__main__":
                     elif key == 'g':
                         land_pub.publish()
                         xyz = (0,0,0,0,0,0)
+                        break
+                    elif key == ' ':
+                        reset_pub.publish()
                         break
             # set yaw pid consts
             elif key == 'e':
@@ -264,11 +313,7 @@ if __name__=="__main__":
                 print('yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(state['p'][3], state['i'][3], state['d'][3],
                      state['p'][2], state['i'][2], state['d'][2], state['p'][0], state['i'][0], state['d'][0]))
                 print('e - yaw;     d - z_axis;     c - xy_axis')
-            else:
-                # count = count + 1
-                # if count > 4:
-                # xyz = (0,0,0,0,0,0)
-                if (key == '\x03'):
+            elif (key == '\x03'):
                     break
 
             # xyz = [xyz[i] * 0.5 for i in range(6)]
