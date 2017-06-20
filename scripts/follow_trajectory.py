@@ -11,7 +11,7 @@ import tf
 import actionlib
 import drone_application.msg
 import numpy as np
-from pose import pose
+from pose import Pose
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
 
@@ -46,7 +46,7 @@ def get_waypoints(data):
     global waypoints, done_waypoints
 
     points_list = data.trajectory[0].multi_dof_joint_trajectory.points
-    p = pose()
+    p = Pose()
 
     for transform in points_list:
         p.convert_geometry_transform_to_pose(transform.transforms[0])
