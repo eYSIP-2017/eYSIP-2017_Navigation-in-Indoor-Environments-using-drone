@@ -16,7 +16,7 @@ class Pose(object):
     def __str__(self):
         return "x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw)
 
-    def convert_geometry_transform_to_pose(self, transform, aruco_mapping, aruco_front):
+    def convert_geometry_transform_to_pose(self, transform, aruco_mapping=True, aruco_front=True):
         try:
             euler = euler_from_quaternion((transform.orientation.x,
                                             transform.orientation.y,
@@ -41,7 +41,7 @@ class Pose(object):
 
         except AttributeError:
             euler = euler_from_quaternion((transform.rotation.x,
-                                            transform.rotatoion.y,
+                                            transform.rotation.y,
                                             transform.rotation.z,
                                             transform.rotation.w
                                             ))

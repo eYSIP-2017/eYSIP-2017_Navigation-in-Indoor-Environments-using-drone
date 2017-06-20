@@ -61,7 +61,7 @@ def pid(data, state, aruco_front, set_array=None):
         twist.linear.x = -(f[0] * np.cos(error[3])) - (f[1] * np.sin(error[3]))
         twist.linear.y = -(f[1] * np.cos(error[3])) + (f[0] * np.sin(error[3]))
         twist.linear.z = f[2]
-        twist.angular.z = f[3]
+        # twist.angular.z = f[3]
     else:
         # if error[0] > 0.1 or error[0] < -0.1 or error[1] > 0.1 or error[1] < -0.1 or error[2] > 0.1 or error[2] < -0.1:
             # twist.linear.x = -f[0] * np.cos(error[3])
