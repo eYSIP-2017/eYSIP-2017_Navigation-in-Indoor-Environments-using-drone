@@ -317,7 +317,7 @@ if __name__=="__main__":
                     break
 
             # xyz = [xyz[i] * 0.5 for i in range(6)]
-            xyz = np.clip(np.array(xyz), -0.3, 0.3)
+            # xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
             twist.linear.z = xyz[2]

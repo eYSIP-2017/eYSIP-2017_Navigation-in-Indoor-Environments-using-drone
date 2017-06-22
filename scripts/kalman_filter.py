@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+import rospy
+
+from geometry_msgs.msg import Twist, Pose, Vector3Stamped
+from std_msgs.msg import Empty, Float64
+from visualization_msgs.msg import Marker
+from tf.transformations import euler_from_quaternion
+from ardrone_autonomy.msg import Navdata
+from aruco_mapping.msg import *
+
+from pose import Pose
+from pid import pid
+import numpy as np
+
+
+class pFilter(object):
+    def __init__(self):
+        self.state = 0
+        self.var = 0
+        self.prev = None
+
+    def observe(self, obs, obs_var):
+        w = self.var / (self.var + obs_var);
+        self.state = (1-w) * self.state + w * obs;
+        self.var = self.var * obs_var / (self.var + obs_var);
+
+    def predict(self, dt, speed_var, control_gain):
+        self.state += control_gain
+        # I probably wont have to do /1000000, make sure to check
+        self.var += speed_var * dt * dt / 1000000
+
+
+class pvFilter(object):
+    def __init__(self):
+        self.state = np.zeros(2)
+        self.var = np.zeros((2, 2))
+        self.prev = None
+
+    def observe_pose(self, obs, obs_var):
+        K = self.var[0] / (obs_var + self.var[0,0])
+        self.state += K * (obs - self.state[0])
+        tmp = np.eye(2)
+        tmp[0, 0] -= K[0]
+        tmp[1, 0] -= K[1]
+        self.var *= tmp
+
+    def observe_speed(self, obs, obs_var):
+        K = self.var[1] / (obs_var + self.var[1,1])
+        self.state += K * (obs - self.state[1])
+        tmp = np.eye(2)
+        tmp[0,1] -= K[0]; 
+        tmp[1,1] -= K[1];
+        self.var *= tmp
+
+    # calculates prediction variance matrix based on gaussian acceleration as error.
+    def predict_gaussion_accel(self, dt, acceleration_var, control_gains, cov_fac=1, speed_var_fac=1):
+        # may not need this
+        dt /= 1000
+
+        G = np.eye(2)
+        G[0,1] = dt
+
+        self.state = G * self.state + control_gains
+        self.var  = G * self.var * G.T
+        self.var[0,0] += acceleration_var * 0.25 * dt*dt*dt*dt
+        self.var[1,0] += cov_fac * acceleration_var * 0.5 * dt*dt*dt * 4
+        self.var[0,1] += cov_fac * acceleration_var * 0.5 * dt*dt*dt * 4
+        self.var[1,1] += speed_var_fac * acceleration_var * 1 * dt*dt * 4 * 4
+
+    # calculates prediction using the given uncertainty matrix
+    # vars is var(0) var(1) covar(0,1)
+    def predict(self, dt, vars, control_gains):
+        # may not need this
+        dt /= 1000
+
+        G = np.eye(2)
+        G[0,1] = dt
+
+        self.state = G * self.state + control_gains
+        self.var  = G * self.var * G.T
+        self.var[0,0] += vars[0]
+        self.var[1,0] += vars[2]
+        self.var[0,1] += vars[2]
+        self.var[1,1] += vars[1]
+
+
+class extendedKalmanFilter(object):
+    def __init__(self):
+        self.x = pvFilter()
+        self.y = pvFilter()
+        self.z = pvFilter()
+        self.roll = pFilter()
+        self.pitch = pFilter()
+        self.yaw = pvFilter()
+        # increased because prediction based on control command is damn inaccurate.
+        self.var_speed_error = 360*360 * 16
+        self.var_speed_observation_xy = 2*2
+        self.var_accel_error_yaw = 360*360
+        self.var_accel_error_xy = 8*8
+        self.var_pose_observation_rp_imu = 1*1
+        self.var_pose_observation_z_IMU = 0.25*0.25
+        self.var_pose_observation_xy = 0.2*0.2
+        self.var_pose_observation_z_aruco = 0.08*0.08
+        self.var_pose_observation_rp_aruco = 3*3
+        self.var_pose_observation_yaw = 3*3
+
+    def __str__(self):
+        return "x: {}       y: {}       z: {}       yaw: {}".format(self.x.state[0], self.y.state[0], self.z.state[0], self.yaw.state[0])
+
+    def odometry_update(self):
+        pass
+
+    def aruco_update(self):
+        pass
+
+    def prediction(self, active_control, dt):
+        # proportionality constants
+        c1 = 0.58
+        c2 = 17.8
+        c3 = 10
+        c4 = 35
+        c5 = 10
+        c6 = 25
+        c7 = 1.4
+        c8 = 1.0
+
+
+        if dt <= 0:
+            return
+        
+        # needed?
+        dt /= 1000000.0
+
+
+        # predict roll, pitch, yaw
+        roll_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.y)) - self.roll.state)
+        pitch_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.x)) - self.pitch.state)
+        yaw_speed_control_gain = dt*c5*(c6 * active_control.angular.z - self.yaw.state[1])
+
+
+
+        yaw_rad = np.radians(self.yaw.state[0])
+        roll_rad = np.radians(self.roll.state)
+        pitch_rad = np.radians(self.pitch.state)
+
+        forceX = np.cos(yaw_rad) * np.sin(roll_rad) * np.cos(pitch_rad) - np.sin(yaw_rad) * np.sin(pitch_rad)
+        forceY = - np.sin(yaw_rad) * np.sin(roll_rad) * np.cos(pitch_rad) - np.cos(yaw_rad) * np.sin(pitch_rad)
+        
+        mul_fac = 1
+        if active_control.linear.z < 0:
+            mul_fac = 2
+
+        vx_gain = dt * c1 * (c2*forceX - self.x.state[1])
+        vy_gain = dt * c1 * (c2*forceY - self.y.state[1])
+        vz_gain = dt * c7 * (c8 * active_control.linear.z * mul_fac - self.z.state[1])
+
+        lastVXGain = vx_gain
+        lastVYGain = vy_gain
+        lastPredictedRoll = self.roll.state
+        lastPredictedPitch = self.pitch.state
+
+        # see  if this is needed?
+        # yaw.state[0] =  angleFromTo(yaw.state[0],-180,180)
+        self.roll.predict(dt, self.var_speed_error, roll_control_gain)
+        self.pitch.predict(dt,self.var_speed_error, pitch_control_gain)
+        self.yaw.predict_gaussion_accel(dt,self.var_accel_error_yaw, np.array([dt*yaw_speed_control_gain/2,yaw_speed_control_gain]),1 , 5*5)
+        # yaw.state[0] =  angleFromTo(yaw.state[0],-180,180);
+
+        self.x.predict_gaussion_accel(dt, self.var_accel_error_xy, np.array([dt*vx_gain/2,vx_gain]), 0.0001)
+        self.y.predict_gaussion_accel(dt, self.var_accel_error_xy, np.array([dt*vy_gain/2,vy_gain]), 0.0001)
+        self.z.predict(dt, np.array([dt*dt*dt*dt, 9*dt,dt*dt*dt*3]), np.array([dt*vz_gain/2,vz_gain]))

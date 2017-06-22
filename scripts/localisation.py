@@ -1,77 +1,70 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+import rospy
+
+from geometry_msgs.msg import Twist, Pose, Vector3Stamped
+from std_msgs.msg import Empty, Float64
+from visualization_msgs.msg import Marker
+from tf.transformations import euler_from_quaternion
+from ardrone_autonomy.msg import Navdata
+from aruco_mapping.msg import ArucoMarker
+
+from pose import Pose
+from pid import pid
 import numpy as np
+from kalman_filter import extendedKalmanFilter
 
-state_matrix = np.matrix('0; 0; 0; 0; 0', dtype = 'float')
-#process_covariance_matrix = np.matrix('4,4,1,1,1; 4,4,1,1,1; 1,1,0.25,0.25,0.25; 1,1,0.25,0.25,0.25; 1,1,0.25,0.25,0.25', dtype = 'float')
-#process_covariance_matrix = numpy.zeros(5)
-#zeros = np.matrix('0.01,0,0,0,0; 0,0.01,0,0,0; 0,0,0.01,0,0; 0,0,0,0.01,0; 0,0,0,0,0.01', dtype = 'float')
-dt = 1
-control_transition_matrix = np.matrix([[(dt*dt)/2.,0,0], [0,(dt*dt)/2.,0], [0,0,dt], [dt,0,0], [0,dt,0]], dtype = 'float')
-error_input = control_transition_matrix * control_transition_matrix.T
-process_covariance_matrix = error_input
-count = 0
+def navdata_callback(nav):
+    ekf.roll.observe(nav.rotX, ekf.var_pose_observation_rp_imu)
+    ekf.pitch.observe(nav.rotY, ekf.var_pose_observation_rp_imu)
+    ekf.yaw.observe_pose(nav.rotZ, 1*1)
+    if ekf.yaw.prev is not None:
+        ekf.yaw.observe_speed(nav.rotZ - ekf.yaw.prev, 1*1)
+    ekf.yaw.prev = nav.rotZ
+
+    yaw_rad = np.radians(ekf.yaw.state[0])
+    vx_global = (np.sin(yaw_rad) * nav.vx + np.cos(yaw_rad) * nav.vy) / 1000.0
+    vy_global = (np.cos(yaw_rad) * nav.vx - np.sin(yaw_rad) * nav.vy) / 1000.0
+
+    ekf.x.observe_speed(vx_global, ekf.var_speed_observation_xy)
+    ekf.y.observe_speed(vy_global, ekf.var_speed_observation_xy)
+    ekf.z.observe_pose(nav.altd, ekf.var_pose_observation_z_IMU)
+    if ekf.z.prev is not None:
+        ekf.z.observe_speed(nav.altd - ekf.z.prev, ekf.var_pose_observation_z_IMU)
+    ekf.z.prev = nav.altd
+
+def aruco_callback(aru):
+    euler = euler_from_quaternion((aru.global_camera_pose.orientation.x,
+                                   aru.global_camera_pose.orientation.y,
+                                   aru.global_camera_pose.orientation.z,
+                                   aru.global_camera_pose.orientation.w
+                                   ))
+    ekf.x.observe_pose(aru.global_camera_pose.position.x, ekf.var_pose_observation_xy)
+    ekf.y.observe_pose(aru.global_camera_pose.position.y, ekf.var_pose_observation_xy)
+    ekf.x.observe_pose(aru.global_camera_pose.position.x, ekf.var_pose_observation_z_aruco)
+
+    # check if eular 0 is correct!!!!!!
+    ekf.roll.observe(euler[0], ekf.var_pose_observation_rp_aruco)
+    ekf.pitch.observe(euler[2], ekf.var_pose_observation_rp_aruco)
+
+    ekf.yaw.observe_pose(euler[1], ekf.var_pose_observation_yaw)
+    print('finished aruco')
+
+def make_prediction(active_control):
+    print('entering pred')
+    ekf.prediction(active_control, 1)
+    print(ekf)
 
 
+if __name__ == "__main__":
+    rospy.init_node('localisation')
+    ekf = extendedKalmanFilter()
 
-
-
-
-def run_kalman_filter():
-    predict_next_state(state_matrix, process_covariance_matrix)
-
-def update_measurement_in_state(state_matrix, process_covariance_matrix):
-    global count
-    # ALL THE MATRICES NEEDED FOR CALCULATIONS
-    #control_values = np.matrix('1,1,45; 3,3,45; 6,6,45; 10,10,45; 15,15,45', dtype = 'float')
-    control_values = np.matrix('1,0,45; 3,0,45; 6,0,45; 10,0,45; 15,0,45', dtype = 'float')
-    #control_values = np.matrix('1,1,45; 2,2,45; 3,3,45; 4,4,45; 5,5,45; 6,6,45; 7,7,45; 8,8,45', dtype = 'float')
-    #control_values = np.matrix('1,0,0; 2,0,0; 3,0,0; 4,0,0; 5,0,0; 6,0,0; 7,0,0; 8,0,0', dtype = 'float')
-    #control_values = np.matrix('10,0,0; 20,0,0; 30,0,0; 40,0,0; 50,0,0; 60,0,0; 70,0,0; 80,0,0', dtype = 'float')
-    observation_matrix = np.matrix('1,0,0,0,0; 0,1,0,0,0; 0,0,1,0,0', dtype = 'float')
-    #measurement_error_covariance_matrix = np.matrix('100,100,30; 100,100,30; 30,30,9', dtype = 'float')
-    measurement_error = np.matrix('0.1; 0.1; 0.03',dtype = 'float')
-    measurement_error_covariance_matrix = measurement_error * measurement_error.T
-    I = np.eye(5)
-    measurement_matrix = control_values[count].T
-    count += 1
-    #kalman_gain = np.matrix()
-
-    # CALCULATION OF KALMAN GAIN
-    #print process_covariance_matrix
-    kalman_gain = (process_covariance_matrix * observation_matrix.T) * np.linalg.inv((observation_matrix * process_covariance_matrix * observation_matrix.T) + measurement_error_covariance_matrix)
-
-    # UPDATE THE STATE MATRIX WITH MEASUREMENT UPDATE
-    state_matrix = state_matrix + (kalman_gain * (measurement_matrix - (observation_matrix * state_matrix)))
+    # aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
+    rospy.Subscriber("/ardrone/navdata", Navdata, navdata_callback)
+    rospy.Subscriber('/aruco_poses', ArucoMarker, aruco_callback)
+    rospy.Subscriber('/cmd_vel', Twist, make_prediction)
     
-    # UPDATE THE PROCESS COVARIANCE MATRIX AFTER MEASUREMENT
-    process_covariance_matrix = (I - kalman_gain * observation_matrix) * process_covariance_matrix
-
-    print "state = ", state_matrix
-    print "covariance = ", process_covariance_matrix
-    print count
-    if count >= 5:
-        return
-
-    predict_next_state(state_matrix, process_covariance_matrix)
-
-
-def predict_next_state(state_matrix, process_covariance_matrix):
-    dt = 1.
-    # ALL THE MATRICES NEEDED FOR CALCULATIONS
-    state_transition_matrix = np.matrix([[1,0,0,dt,0], [0,1,0,0,dt], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]], dtype = 'float')
-    #state_transition_matrix = np.matrix('1,0,0,dt,0; 0,1,0,0,dt; 0,0,1,0,0; 0,0,0,1,0; 0,0,0,0,1', dtype = 'float')
-    control_variable_matrix = np.matrix([[1],[0],[0]])
-    control_transition_matrix = np.matrix([[(dt*dt)/2.,0,0], [0,(dt*dt)/2.,0], [0,0,dt], [dt,0,0], [0,dt,0]], dtype = 'float')
-    #control_transition_matrix = np.matrix('(dt^2.)/2.,0,0; 0,(dt^2.)/2.,0; 0,0,dt; dt,0,0; 0,dt,0', dtype = 'float')
-    
-    # UPDATE THE STATE MATRIX ACCORDING TO BEST PREDICTION
-    state_matrix = state_transition_matrix * state_matrix #+ control_transition_matrix * control_variable_matrix
-
-    # UPDATE THE PROCESS COVARIANCE MATRIX BASED ON INPUTS
-    process_covariance_matrix = state_transition_matrix * process_covariance_matrix * state_transition_matrix.T
-    
-    # GOING TO THE INCORPORATION OF MEASUREMENT
-    update_measurement_in_state(state_matrix, process_covariance_matrix)
-
-
-if __name__ == '__main__':
-    run_kalman_filter()
+    drone_pose_pub = rospy.Publisher('/drone_pose', Float64, queue_size=1)
+    rospy.spin()
