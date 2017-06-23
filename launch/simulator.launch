@@ -7,5 +7,4 @@
  <include file="$(find cvg_sim_gazebo)/launch/spawn_quadrotor.launch" > 
    <arg name="model" value="$(find cvg_sim_gazebo)/urdf/quadrotor_sensors.urdf.xacro"/> 
  </include> 
- <node pkg="tf" type="static_transform_publisher" name="world_to_nav" args="0 0 0 0 0 0 world nav 100" />
 </launch>
