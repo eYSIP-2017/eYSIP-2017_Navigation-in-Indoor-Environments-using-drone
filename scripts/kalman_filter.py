@@ -28,8 +28,7 @@ class pFilter(object):
 
     def predict(self, dt, speed_var, control_gain):
         self.state += control_gain
-        # I probably wont have to do /1000000, make sure to check
-        self.var += speed_var * dt * dt / 1000000
+        self.var += speed_var * dt * dt
 
 
 class pvFilter(object):
@@ -56,9 +55,6 @@ class pvFilter(object):
 
     # calculates prediction variance matrix based on gaussian acceleration as error.
     def predict_gaussion_accel(self, dt, acceleration_var, control_gains, cov_fac=1, speed_var_fac=1):
-        # may not need this
-        dt /= 1000
-
         G = np.eye(2)
         G[0,1] = dt
 
@@ -72,9 +68,6 @@ class pvFilter(object):
     # calculates prediction using the given uncertainty matrix
     # vars is var(0) var(1) covar(0,1)
     def predict(self, dt, vars, control_gains):
-        # may not need this
-        dt /= 1000
-
         G = np.eye(2)
         G[0,1] = dt
 
@@ -107,7 +100,11 @@ class extendedKalmanFilter(object):
         self.var_pose_observation_yaw = 3*3
 
     def __str__(self):
-        return "x: {}       y: {}       z: {}       yaw: {}".format(self.x.state[0], self.y.state[0], self.z.state[0], self.yaw.state[0])
+        return "x: {}       y: {}       z: {}       yaw: {}".format(np.around(self.x.state[0], 3),
+                                                                    np.around(self.y.state[0], 3),
+                                                                    np.around(self.z.state[0], 3),
+                                                                    np.around(self.yaw.state[0], 3)
+                                                                    )
 
     def odometry_update(self):
         pass
@@ -129,14 +126,11 @@ class extendedKalmanFilter(object):
 
         if dt <= 0:
             return
-        
-        # needed?
-        dt /= 1000000.0
 
 
         # predict roll, pitch, yaw
-        roll_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.y)) - self.roll.state)
-        pitch_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.x)) - self.pitch.state)
+        roll_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.x)) - self.roll.state)
+        pitch_control_gain = dt*c3*(c4 * max(-0.5, min(0.5, active_control.linear.y)) - self.pitch.state)
         yaw_speed_control_gain = dt*c5*(c6 * active_control.angular.z - self.yaw.state[1])
 
 
