@@ -1,0 +1,6 @@
+<launch> 
+ <include file="$(find aruco_mapping)/launch/aruco_mapping.launch" />
+ 
+ <node name="transform_handler" pkg="drone_application" type="transform_handler.py" />
+ <node name="localisation" pkg="drone_application" type="localisation.py" />
+</launch>

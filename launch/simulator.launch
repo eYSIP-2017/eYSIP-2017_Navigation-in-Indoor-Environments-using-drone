@@ -1,6 +1,6 @@
 <launch> 
  <include file="$(find gazebo_ros)/launch/empty_world.launch"> 
-   <arg name="world_name" value="$(find drone_application)/worlds/small_world.sdf"/> 
+   <arg name="world_name" value="$(find drone_application)/worlds/small_world_with_aruco.sdf"/> 
    <!-- <arg name="world_name" value="$(find turtlebot_gazebo)/worlds/playground.world"/>  -->
    <!-- <arg name="world_name" value="$(find cvg_sim_gazebo)/worlds/ardrone_testworld.world"/>  -->
  </include> 
