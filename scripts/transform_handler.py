@@ -2,8 +2,6 @@
 import rospy
 
 # Because of transformations
-import tf
-
 import tf2_ros
 from geometry_msgs.msg import Twist, TransformStamped
 import numpy as np
@@ -36,23 +34,28 @@ def multiply_transforms(trans1, trans2):
 
 
 if __name__ == '__main__':
-    rospy.init_node('transform_listener')
+    rospy.init_node('transform_handler')
 
     tfBuffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(tfBuffer)
 
+    rate = rospy.Rate(100.0)
+    found = False
     while not rospy.is_shutdown():
         try:
             trans1 = tfBuffer.lookup_transform('camera_position', 'world', rospy.Time())
             trans2 = tfBuffer.lookup_transform('nav', 'ardrone_base_frontcam', rospy.Time())
 
             trans = multiply_transforms(trans2.transform, trans1.transform)
-            trans.header.stamp = rospy.Time.now()
-            trans.header.frame_id = 'nav'
-            trans.child_frame_id = 'world'
-            print(trans)
+            if not found:
+                static_trans = trans
+                found = True
+            static_trans.header.stamp = rospy.Time.now()
+            static_trans.header.frame_id = 'nav'
+            static_trans.child_frame_id = 'world'
+            print(static_trans)
             br = tf2_ros.TransformBroadcaster()
-            br.sendTransform(trans)
+            br.sendTransform(static_trans)
 
             # print(trans1.asMatrix(trans1.translation, trans1.rotation))
             # trans
@@ -60,3 +63,4 @@ if __name__ == '__main__':
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print('not yet found')
             continue
+        rate.sleep()
