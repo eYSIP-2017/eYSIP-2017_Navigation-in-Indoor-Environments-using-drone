@@ -35,7 +35,7 @@ from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
-from aruco_mapping.msg import *
+# from aruco_mapping.msg import *
 from pose import Pose
 
 import sys, select, termios, tty
@@ -119,6 +119,15 @@ def get_pose_from_aruco(temp_pose):
 def get_pose_from_kalman(kalman_pose):
     global_pose.convert_geometry_transform_to_pose(kalman_pose)
 
+def get_pose_from_whycon(whycon_pose):
+    whycon_pose = whycon_pose.poses[0]
+    # x - +ve left of camera
+    # y - +ve below of camera
+    # z - higher away from camera
+    # yaw - euler[1] - 1.57 at centre decreasing towards edges
+    global_pose.convert_geometry_transform_to_pose(whycon_pose, remap=['z', 'x', 'y', 1])
+    global_pose.x *= -1
+    pose_pub.publish(global_pose.as_waypoints())
 
 if __name__=="__main__":
     marker_pose = Pose()
@@ -131,15 +140,19 @@ if __name__=="__main__":
     localisation = bool(rospy.get_param('~localisation', 'true'))
 
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
-    rospy.Subscriber('kalman_pose', msg.Pose, get_pose_from_kalman)
+    rospy.Subscriber('/whycon/poses', msg.PoseArray, get_pose_from_whycon)
+    if localisation:
+        rospy.Subscriber('kalman_pose', msg.Pose, get_pose_from_kalman)
     # if aruco_mapping:
     #     rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
     # else:
     #     rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
 
     # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
-    
+    from drone_application.msg import pid_error
+
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
+    pose_pub = rospy.Publisher('whycon_pose', pid_error, queue_size=5)
     pub = rospy.Publisher('/cmd_vel', msg.Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
@@ -164,9 +177,9 @@ if __name__=="__main__":
 
         # values of x and y may remain same
         if aruco_front:
-            xy_pid = [1, 0.0, 0.0]
+            # xy_pid = [1, 0.0, 0.0]
             if aruco_mapping:
-                # xy_pid = [0.15, 0.0025, 0.025]
+                xy_pid = [0.15, 0.0025, 0.025]
                 state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
                 state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
@@ -186,7 +199,6 @@ if __name__=="__main__":
 
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
-        yaw_set = 180
 
         twist = msg.Twist()
         import time
@@ -265,7 +277,7 @@ if __name__=="__main__":
                         last_twist[3] = pid_twist.angular.z
                     else:
                         current_pose = global_pose.as_waypoints()
-                        pid_twist, state = pid(current_pose, state, aruco_front)
+                        pid_twist, state = pid(current_pose, [-1, 0, 0, 0], state)
                         pub.publish(pid_twist)
 
                     key = getKey()
@@ -320,7 +332,6 @@ if __name__=="__main__":
             elif (key == '\x03'):
                     break
 
-            # xyz = [xyz[i] * 0.5 for i in range(6)]
             # xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]
@@ -329,10 +340,6 @@ if __name__=="__main__":
             twist.angular.y = xyz[4]
             twist.angular.z = xyz[5]
             pub.publish(twist)
-
-            #print("loop: {0}".format(count))
-            #print("target: vx: {0}, wz: {1}".format(target_speed, target_turn))
-            #print("publihsed: vx: {0}, wz: {1}".format(twist.linear.x, twist.angular.z))
 
     # except Exception as e:
     #     print e

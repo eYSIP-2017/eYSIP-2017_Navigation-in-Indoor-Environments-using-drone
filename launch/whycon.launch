@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="name" default="whycon"/>
+  <arg name="targets" default="1"/>
+  
+  <node name="whycon" type="whycon" pkg="whycon" output="screen">
+    <param name="targets" value="$(arg targets)"/>
+    <param name="name" value="$(arg name)"/>
+    <param name="outer_diameter" value="0.122" />
+    <param name="inner_diameter" value="0.050" />
+  </node>
+
+  <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+    <remap from="image" to="/whycon/image_out"/>
+    <param name="autosize" value="true" />
+  </node>
+
+<!-- RVIZ -->
+<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find whycon)/rviz/whycon_config.rviz" />
+ -->
+</launch>
+  
