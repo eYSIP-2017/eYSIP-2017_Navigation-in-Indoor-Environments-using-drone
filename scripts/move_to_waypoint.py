@@ -6,6 +6,8 @@ import drone_application.msg
 import tf
 from geometry_msgs.msg import Twist
 import numpy as np
+from pid import pid
+import time
 
 class moveAction(object):
     # create messages that are used to publish feedback/result
@@ -34,28 +36,27 @@ class moveAction(object):
 
     def move_to_waypoint(self, waypoint):
         current_pose = self.moniter_transform()
-
-        end_pose = waypoint #- current_pose
-
-        twist = Twist()
         error_tolerence = np.array([0.1, 0.1, 0.1, 0.1])
-        while (current_pose > end_pose + error_tolerence).any() or (current_pose < end_pose - error_tolerence).any():
-            difference = end_pose - current_pose
-            # difference = difference.astype(int)
-            # difference = np.around(difference, decimals=2)
-            a = (difference[0] * np.cos(end_pose[3])) + (difference[1] * np.sin(end_pose[3]))
-            difference[1] = (difference[1] * np.cos(end_pose[3])) - (difference[0] * np.sin(end_pose[3]))
-            difference[0] = a
-            for_twist = np.clip(difference, -1, 1)
-            twist.linear.x = for_twist[0]
-            twist.linear.y = for_twist[1]
-            twist.linear.z = for_twist[2]
-            twist.angular.z = for_twist[3]
-            self.pub.publish(twist)
+
+        state = dict()
+        state['lastError'] = np.array([0.,0.,0.,0.])
+        state['integral'] = np.array([0.,0.,0.,0.])
+        state['derivative'] = np.array([0.,0.,0.,0.])
+
+        xy_pid = [0.15, 0.0025, 0.025]
+        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
+        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
+        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
+
+        state['last_time'] = time.time()
+        while (current_pose > waypoint + error_tolerence).any() or (current_pose < waypoint - error_tolerence).any():
+            pid_twist, state = pid(current_pose, waypoint, state)
+            self.pub.publish(pid_twist)
+
             current_pose = self.moniter_transform()
             print(current_pose)
             # publish the feedback
-            self._feedback.difference = difference
+            self._feedback.difference = waypoint - current_pose
             self._as.publish_feedback(self._feedback)
 
 
