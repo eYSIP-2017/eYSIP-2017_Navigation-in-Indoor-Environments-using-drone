@@ -44,6 +44,9 @@ class Pose(object):
     def as_waypoints(self):
         return np.around(np.array([self.x, self.y, self.z, self.yaw]), decimals=3)
 
+    def just_xy(self):
+        return np.around(np.array([self.y, self.z]), decimals=3)
+
     def store_marker_ids(self, marker_ids):
        self.marker_ids = marker_ids
 

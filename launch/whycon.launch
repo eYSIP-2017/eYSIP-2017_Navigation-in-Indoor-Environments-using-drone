@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="name" default="whycon"/>
-  <arg name="targets" default="1"/>
+  <arg name="targets" default="3"/>
   
   <node name="whycon" type="whycon" pkg="whycon" output="screen">
     <param name="targets" value="$(arg targets)"/>
@@ -16,7 +16,7 @@
   </node>
 
 <!-- RVIZ -->
-<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find whycon)/rviz/whycon_config.rviz" />
- -->
+<!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find whycon)/rviz/whycon_config.rviz" /> -->
+
 </launch>
   
