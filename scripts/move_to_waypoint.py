@@ -27,8 +27,8 @@ class moveAction(object):
         trans = None
         while trans is None:
             try:
-                trans, rot = self.tf_listener.lookupTransform('/nav', '/base_link', rospy.Time(0))
-                # trans, rot = self.tf_listener.lookupTransform('/odom', '/ardrone_base_link', rospy.Time(0))
+                # trans, rot = self.tf_listener.lookupTransform('/nav', '/base_link', rospy.Time(0))
+                trans, rot = self.tf_listener.lookupTransform('/ardrone_base_link', '/odom', rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
         euler = tf.transformations.euler_from_quaternion(rot)
@@ -49,7 +49,10 @@ class moveAction(object):
         state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
 
         state['last_time'] = time.time()
-        while (current_pose > waypoint + error_tolerence).any() or (current_pose < waypoint - error_tolerence).any():
+        i = 0
+        # while (current_pose > waypoint + error_tolerence).all() and (current_pose < waypoint - error_tolerence).all():
+        while (current_pose[i] > waypoint[i] + error_tolerence[i] or current_pose[i] < waypoint[i] - error_tolerence[i]):
+        # while (current_pose[0] > waypoint[0] + error_tolerence[0] or current_pose[0] < waypoint[0] - error_tolerence[0]) or (current_pose[1] > waypoint[1] + error_tolerence[1] or current_pose[1] < waypoint[1] - error_tolerence[1]):
             pid_twist, state = pid(current_pose, waypoint, state)
             self.pub.publish(pid_twist)
 

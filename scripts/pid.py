@@ -55,7 +55,7 @@ def pid(data, set_array, state):
     # twist.linear.z = f[2]
     # twist.angular.z = f[3]
     twist.linear.x = f[0]
-    twist.linear.y = f[1]
-    twist.linear.z = f[2]
+    twist.linear.y = -f[1]
+    # twist.linear.z = f[2]
     # twist.angular.z = f[3]
     return twist, state

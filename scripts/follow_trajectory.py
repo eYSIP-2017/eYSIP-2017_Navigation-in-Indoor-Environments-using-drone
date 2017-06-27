@@ -72,7 +72,7 @@ if __name__ == '__main__':
         rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints)
 
         # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
-        waypoints = [[0,0,1,0], [1,0,1,0], [2,0,1,0]]
+        waypoints = [[0,0,1,0], [-1,0,1,0]]#, [1,1,1,0]]
 
         # while not done_waypoints:
         #     pass
