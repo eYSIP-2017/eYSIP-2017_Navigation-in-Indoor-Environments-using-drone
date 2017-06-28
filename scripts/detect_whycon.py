@@ -22,16 +22,31 @@ def compute_distances(all_poses):
 def predict_group(all_poses):
     all_poses.sort(key=lambda x: x[0])
     # print(all_poses)
-    pred = np.zeros(6)
+    pred = np.zeros(12)
     
     pred[0] = np.sqrt(np.sum(np.square(all_poses[0] - all_poses[1])))
     pred[1] = np.sqrt(np.sum(np.square(all_poses[0] - all_poses[2])))
     pred[2] = np.sqrt(np.sum(np.square(all_poses[2] - all_poses[1])))
-    pred[3] = np.arccos((pred[0] + pred[1] - pred[2]) / (2 * pred[0] * pred[1]))
-    pred[4] = np.arccos((pred[1] + pred[2] - pred[0]) / (2 * pred[1] * pred[2]))
-    pred[5] = np.arccos((pred[2] + pred[0] - pred[1]) / (2 * pred[2] * pred[0]))
+    pred[3] = np.arccos((pred[0] + pred[2] - pred[1]) / (2 * pred[0] * pred[2]))
+    pred[4] = np.arccos((pred[1] + pred[0] - pred[2]) / (2 * pred[1] * pred[0]))
+    pred[5] = np.arccos((pred[2] + pred[1] - pred[0]) / (2 * pred[2] * pred[1]))
 
-    print(nn.predict([pred]))
+    centroid_y = (all_poses[0][0] + all_poses[1][0] + all_poses[2][0])/3
+    centroid_z = (all_poses[0][1] + all_poses[1][1] + all_poses[2][1])/3
+    print(np.around(np.array([centroid_y, centroid_z]), decimals=2))
+
+    pred[6] = np.sqrt(np.square(all_poses[0][0] - centroid_y) + np.square(all_poses[0][1] - centroid_z))
+    pred[7] = np.sqrt(np.square(all_poses[1][0] - centroid_y) + np.square(all_poses[1][1] - centroid_z))
+    pred[8] = np.sqrt(np.square(all_poses[2][0] - centroid_y) + np.square(all_poses[2][1] - centroid_z))
+
+    # get the absolute slope
+    pred[9] = np.arctan(abs((all_poses[0][1] - all_poses[1][1]) / (all_poses[0][0] - all_poses[1][0])))
+    pred[10] = np.arctan(abs((all_poses[1][1] - all_poses[2][1]) / (all_poses[1][0] - all_poses[2][0])))
+    pred[11] = np.arctan(abs((all_poses[2][1] - all_poses[0][1]) / (all_poses[2][0] - all_poses[0][0])))
+    # print(pred)
+    # pred = obj_list[1].transform([pred])
+    # print(obj_list[0].predict(pred))
+    print(clf.predict([pred]))
 
 
 def get_pose_from_whycon(whycon_poses):
@@ -58,7 +73,8 @@ if __name__ == '__main__':
     rospy.init_node('detect_whycon')
     temp_pose = Pose()
     all_poses = list()
-    nn = pickle.load(open(r'/home/ros/whycon_ws/src/eYSIP-2017_Navigation-in-Indoor-Environments-using-drone/whycon_formation_data/trained_nn.p', 'rb' ))
+    # obj_list = pickle.load(open(r'/home/ros/whycon_ws/src/eYSIP-2017_Navigation-in-Indoor-Environments-using-drone/whycon_formation_data/all_train.p', 'rb' ))
+    clf = pickle.load(open(r'/home/ros/whycon_ws/src/eYSIP-2017_Navigation-in-Indoor-Environments-using-drone/whycon_formation_data/decision_train.p', 'rb' ))
     rospy.Subscriber('/whycon/poses', PoseArray, get_pose_from_whycon)
     pose_pub = rospy.Publisher('whycon_pose', pid_error, queue_size=5)
     rospy.spin()

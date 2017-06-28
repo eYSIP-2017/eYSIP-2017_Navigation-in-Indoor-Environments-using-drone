@@ -4,7 +4,7 @@ from __future__ import print_function
 import rospy
 from drone_application.msg import pid_error
 
-file = open('4_5_6.txt', 'w')
+file = open('five_markers.txt', 'w')
 file.truncate()
 
 def store_to_file(data):
