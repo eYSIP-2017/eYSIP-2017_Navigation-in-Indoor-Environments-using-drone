@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="name" default="whycon"/>
-  <arg name="targets" default="3"/>
+  <arg name="targets" default="5"/>
   
   <node name="whycon" type="whycon" pkg="whycon" output="screen">
     <param name="targets" value="$(arg targets)"/>
