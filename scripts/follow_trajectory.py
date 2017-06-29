@@ -12,6 +12,8 @@ import actionlib
 import drone_application.msg
 import numpy as np
 from pose import Pose
+import tf2_ros
+import transform_handler as th
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
 
@@ -42,17 +44,37 @@ def send_goal(waypoint, client=None):
 waypoints = deque()
 done_waypoints = False
 
-def get_waypoints(data):
+def get_waypoints(data, aruco_coords=False):
+    print('in')
     global waypoints, done_waypoints
 
     points_list = data.trajectory[0].multi_dof_joint_trajectory.points
     p = Pose()
+    if aruco_coords:
+        tfBuffer = tf2_ros.Buffer()
+        listener = tf2_ros.TransformListener(tfBuffer)
+
+        print('going to find tf')
+        while True:
+            try:
+                trans = tfBuffer.lookup_transform('camera_position', 'nav', rospy.Time())
+                print(trans)
+                break
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+                print(e)
+                continue
 
     for transform in points_list:
-        p.convert_geometry_transform_to_pose(transform.transforms[0])
-        waypoints.append(list(p.as_waypoints()))
+        if aruco_coords:
+            p.convert_geometry_transform_to_pose(th.multiply_transforms(trans.transform, transform.transforms[0]).transform, ['z', 'x', 'y', 1])
+        else:
+            p.convert_geometry_transform_to_pose(transform.transforms[0])
+        a = np.around(p.as_waypoints(), decimals=2)
+        print(a)
+        waypoints.append(list(a))
         # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
+    # print(waypoints)
 
     # generate_trajectory(waypoints)
 
@@ -65,18 +87,19 @@ def get_waypoints(data):
     # print(len(data.trajectory[0].multi_dof_joint_trajectory.points))
     # print(type(data.trajectory[0].multi_dof_joint_trajectory.points[2].transforms[0]))
 
-
 if __name__ == '__main__':
     try:
         rospy.init_node('follow_trajectory', anonymous=True)
-        rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints)
+        rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints, True)
 
         # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
-        waypoints = [[0,0,1,0], [-1,0,1,0]]#, [1,1,1,0]]
-
+        # waypoints = [[1.5,0,1.2,0], [1.5,1,1.2,0], [1.5,2,1.2,0]]
+        # waypoints = [[-1.5,0,0.8,0], [-1.5,-0.5,1,0], [-1.5,-1,1.1,0], [-1.5,-1.2,1.2,0], [-1.5,-1.5,1.3,0], [-1.5,-1.8,1.3,0], [-1.5,-2,1.3,0], [-1.5,-2.2,1,0], [-1.5,-2.4,0.9,0], [-1.5,-2.6,0.8,0], [-1.5,-2.6,0.5,0]]
+        rospy.spin()
         # while not done_waypoints:
         #     pass
-        generate_trajectory(waypoints)
+        # generate_trajectory(waypoints)
+        # land_pub.publish()
 
         
 
@@ -93,4 +116,7 @@ if __name__ == '__main__':
         # spin() simply keeps python from exiting until this node is stopped
         # rospy.spin()
     except rospy.ROSInterruptException:
+        client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+        client.wait_for_server()
+        client.cancel_goal()
         print('got exception')

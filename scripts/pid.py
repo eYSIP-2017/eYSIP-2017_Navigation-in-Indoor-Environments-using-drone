@@ -56,12 +56,12 @@ def pid(data, set_array, state):
     twist = Twist()
     f = np.clip(f, -0.5, 0.5)
     
-    # twist.linear.x = -(f[0] * np.cos(error[3])) - (f[1] * np.sin(error[3]))
-    # twist.linear.y = -(f[1] * np.cos(error[3])) + (f[0] * np.sin(error[3]))
-    # twist.linear.z = f[2]
-    # twist.angular.z = f[3]
-    twist.linear.x = f[0]
-    twist.linear.y = f[1]
+    twist.linear.x = (f[0] * np.cos(error[3])) - (f[1] * np.sin(error[3]))
+    twist.linear.y = (f[1] * np.cos(error[3])) + (f[0] * np.sin(error[3]))
     twist.linear.z = f[2]
+    # twist.angular.z = f[3]
+    # twist.linear.x = f[0]
+    # twist.linear.y = f[1]
+    # twist.linear.z = f[2]
     # twist.angular.z = f[3]
     return twist, state

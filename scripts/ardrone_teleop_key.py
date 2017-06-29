@@ -130,9 +130,9 @@ def get_pose_from_aruco(temp_pose):
             if current_marker_id == 18:
                 marker_pose.set_max_found(True)
         # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
-            marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)], aruco_mapping, aruco_front)
+            marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
 
-        global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose, aruco_mapping, aruco_front)
+        global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
         """
         modify global poses based on this convention:
             global_pose.x = x-axis - This is correct no need to change
@@ -140,7 +140,7 @@ def get_pose_from_aruco(temp_pose):
             global_pose.z = z-axis (+ve when drone is abose the marker's origin)
         """
     else:
-        global_pose.convert_geometry_transform_to_pose(temp_pose.pose, aruco_mapping, aruco_front)
+        global_pose.convert_geometry_transform_to_pose(temp_pose.pose)
 
 
 

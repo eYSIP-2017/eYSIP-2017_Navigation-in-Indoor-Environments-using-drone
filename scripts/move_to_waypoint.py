@@ -12,8 +12,9 @@ import time
 from pose import Pose
 
 def get_camera_pose(temp_pose):
-    camera_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
-    # camera_pose.x *= -1
+    camera_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose, ['z', 'y', 'x', 1])
+    camera_pose.x *= -1
+    # camera_pose.y *= -1
 
 class moveAction(object):
     # create messages that are used to publish feedback/result
@@ -50,10 +51,10 @@ class moveAction(object):
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
 
-        xy_pid = [0.15/2, 0.0025/2, 0.025/2]
-        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3/2, 1.0], dtype=float)
-        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025/2, 0.0], dtype=float)
-        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15/2, 0.0], dtype=float)
+        xy_pid = [0.1, 0.00125, 0.025]
+        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.15, 1.0], dtype=float)
+        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.00125, 0.0], dtype=float)
+        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.075, 0.0], dtype=float)
 
         state['last_time'] = time.time()
         last_twist = np.zeros(4)
