@@ -51,10 +51,11 @@ class moveAction(object):
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
 
-        xy_pid = [0.1, 0.00125, 0.025]
-        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.15, 1.0], dtype=float)
-        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.00125, 0.0], dtype=float)
-        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.075, 0.0], dtype=float)
+        # xy_pid = [0.3, 0.0, 0.25]
+        xy_pid = [0.2, 0.00, 0.1]
+        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
+        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
+        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
 
         state['last_time'] = time.time()
         last_twist = np.zeros(4)
