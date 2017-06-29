@@ -20,7 +20,13 @@ def pid(data, set_array, state):
     """
     convention in which to send data:
     data[0] = x-axis (+ve is front)
-    data[1] = y-axis (+ve is left)
+    data[1] = y-axis (-ve is left)
+    data[2] = z-axis (+ve is up)
+    data[3] = yaw (+ve is counter-clockwise
+
+    convention in which to send data for aruco_mapping:
+    data[0] = x-axis (positive values always and front is less is front)
+    data[1] = y-axis (-ve is left)
     data[2] = z-axis (+ve is up)
     data[3] = yaw (+ve is counter-clockwise
     
@@ -55,7 +61,7 @@ def pid(data, set_array, state):
     # twist.linear.z = f[2]
     # twist.angular.z = f[3]
     twist.linear.x = f[0]
-    twist.linear.y = -f[1]
-    # twist.linear.z = f[2]
+    twist.linear.y = f[1]
+    twist.linear.z = f[2]
     # twist.angular.z = f[3]
     return twist, state

@@ -37,6 +37,7 @@ from tf.transformations import euler_from_quaternion
 from ardrone_autonomy.msg import Navdata
 from aruco_mapping.msg import *
 from pose import Pose
+import actionlib
 
 import sys, select, termios, tty
 from pid import pid
@@ -132,6 +133,12 @@ def get_pose_from_aruco(temp_pose):
             marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)], aruco_mapping, aruco_front)
 
         global_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose, aruco_mapping, aruco_front)
+        """
+        modify global poses based on this convention:
+            global_pose.x = x-axis - This is correct no need to change
+            global_pose.y = y-axis (-ve when drone is on the left of the marker's origin)
+            global_pose.z = z-axis (+ve when drone is abose the marker's origin)
+        """
     else:
         global_pose.convert_geometry_transform_to_pose(temp_pose.pose, aruco_mapping, aruco_front)
 
@@ -221,15 +228,19 @@ if __name__=="__main__":
             elif key == 'g':
                 land_pub.publish()
             elif key == 'w':
-                import follow_trajectory as ft
-                import actionlib
-                import drone_application.msg
                 client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
-                waypoints = [[0,0,1,0], [1,0,1,0], [2,0,1,0]]
-                for waypoint in waypoints:
-                    print(waypoint)
-                    result = ft.send_goal(waypoint, client)
-                    print(result)
+                client.wait_for_server()
+                print('server_found')
+                client.cancel_goal()
+                # import follow_trajectory as ft
+                # import actionlib
+                # import drone_application.msg
+                # client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+                # waypoints = [[0,0,1,0], [1,0,1,0], [2,0,1,0]]
+                # for waypoint in waypoints:
+                #     print(waypoint)
+                #     result = ft.send_goal(waypoint, client)
+                #     print(result)
                     
             elif key == 'p':
                 last_twist = np.zeros(4)
@@ -240,7 +251,7 @@ if __name__=="__main__":
                         set_array[0] += 1.5
                         current_pose = global_pose.as_waypoints()
 
-                        pid_twist, state = pid(current_pose, state, aruco_front, set_array)
+                        pid_twist, state = pid(current_pose, np.array([0,0,1.5,0]), state)
 
                         if (current_pose == np.array([0., 0., 0., 0.])).all():
                             marker_not_detected_count += 1
@@ -261,7 +272,7 @@ if __name__=="__main__":
                         last_twist[3] = pid_twist.angular.z
                     else:
                         current_pose = global_pose.as_waypoints()
-                        pid_twist, state = pid(current_pose, state, aruco_front)
+                        pid_twist, state = pid(current_pose, np.array([1.5, 0, 0, 0]), state)
                         pub.publish(pid_twist)
 
                     key = getKey()

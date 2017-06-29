@@ -13,6 +13,7 @@ from pose import Pose
 
 def get_camera_pose(temp_pose):
     camera_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
+    # camera_pose.x *= -1
 
 class moveAction(object):
     # create messages that are used to publish feedback/result
@@ -25,6 +26,7 @@ class moveAction(object):
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
         self._as = actionlib.SimpleActionServer(self._action_name, drone_application.msg.moveAction, execute_cb=self.execute_cb, auto_start = False)
         self._as.start()
+        self.empty_twist = Twist()
         print('server ready')
 
     # returns the current pose of the drone
@@ -40,28 +42,46 @@ class moveAction(object):
         return np.array([trans[0], trans[1], trans[2], euler[2]])
 
     def move_to_waypoint(self, waypoint):
-        current_pose = self.moniter_transform()
-        error_tolerence = np.array([0.1, 0.1, 0.1, 0.1])
+        # current_pose = self.moniter_transform()
+        current_pose = camera_pose.as_waypoints()
 
         state = dict()
         state['lastError'] = np.array([0.,0.,0.,0.])
         state['integral'] = np.array([0.,0.,0.,0.])
         state['derivative'] = np.array([0.,0.,0.,0.])
 
-        xy_pid = [0.15, 0.0025, 0.025]
-        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
-        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025, 0.0], dtype=float)
-        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
+        xy_pid = [0.15/2, 0.0025/2, 0.025/2]
+        state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3/2, 1.0], dtype=float)
+        state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025/2, 0.0], dtype=float)
+        state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15/2, 0.0], dtype=float)
 
         state['last_time'] = time.time()
-        i = 0
-        # while (current_pose > waypoint + error_tolerence).all() and (current_pose < waypoint - error_tolerence).all():
-        while (current_pose[i] > waypoint[i] + error_tolerence[i] or current_pose[i] < waypoint[i] - error_tolerence[i]):
-        # while (current_pose[0] > waypoint[0] + error_tolerence[0] or current_pose[0] < waypoint[0] - error_tolerence[0]) or (current_pose[1] > waypoint[1] + error_tolerence[1] or current_pose[1] < waypoint[1] - error_tolerence[1]):
-            pid_twist, state = pid(current_pose, waypoint, state)
-            self.pub.publish(pid_twist)
+        last_twist = np.zeros(4)
+        marker_not_detected_count = 0
 
-            current_pose = self.moniter_transform()
+        while not np.allclose(current_pose[0:-1], waypoint[0:-1], atol=0.1):
+            current_pose = camera_pose.as_waypoints()
+            pid_twist, state = pid(current_pose, waypoint, state)
+            if (current_pose == np.array([0., 0., 0., 0.])).all():
+                marker_not_detected_count += 1
+                
+            if (last_twist == np.array([pid_twist.linear.x, pid_twist.linear.y, pid_twist.linear.z, pid_twist.angular.z])).all():
+                marker_not_detected_count += 1
+
+            if marker_not_detected_count > 2:
+                self.pub.publish(self.empty_twist)
+                marker_not_detected_count = 0
+                print('feed stuck!!!')
+            else:
+                self.pub.publish(pid_twist)
+
+            last_twist[0] = pid_twist.linear.x
+            last_twist[1] = pid_twist.linear.y
+            last_twist[2] = pid_twist.linear.z
+            last_twist[3] = pid_twist.angular.z
+
+            # current_pose = self.moniter_transform()
+            
             print(current_pose)
             # publish the feedback
             self._feedback.difference = waypoint - current_pose
@@ -76,8 +96,7 @@ class moveAction(object):
         # start executing the action
         print('starting exec')
         self.move_to_waypoint(np.array(goal.waypoint))
-        twist = Twist()
-        self.pub.publish(twist)
+        self.pub.publish(self.empty_twist)
         # check that preempt has not been requested by the client
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
