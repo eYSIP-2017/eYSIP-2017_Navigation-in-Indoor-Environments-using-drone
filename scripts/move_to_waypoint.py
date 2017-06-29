@@ -3,9 +3,14 @@ from __future__ import print_function
 import rospy
 import actionlib
 import drone_application.msg
+from aruco_mapping.msg import ArucoMarker
 import tf
 from geometry_msgs.msg import Twist
 import numpy as np
+from pose import Pose
+
+def get_camera_pose(temp_pose):
+    camera_pose.convert_geometry_transform_to_pose(temp_pose.global_camera_pose)
 
 class moveAction(object):
     # create messages that are used to publish feedback/result
@@ -83,6 +88,8 @@ class moveAction(object):
 if __name__ == '__main__':
     try:
         rospy.init_node('move_to_waypoint')
+        camera_pose = Pose()
+        rospy.Subscriber("/aruco_poses", ArucoMarker, get_camera_pose)
         server = moveAction(rospy.get_name())
         # rospy.Subscriber("/", , get_waypoints)
 
