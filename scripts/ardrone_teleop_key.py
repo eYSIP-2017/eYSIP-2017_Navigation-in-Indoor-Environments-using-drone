@@ -126,7 +126,7 @@ def get_pose_from_aruco(temp_pose):
             else:
                 current_marker_id = max(temp_pose.marker_ids)
 
-            if current_marker_id == 18:
+            if current_marker_id == 19:
                 marker_pose.set_max_found(True)
         # if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
             marker_pose.convert_geometry_transform_to_pose(temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)], aruco_mapping, aruco_front)
@@ -187,7 +187,7 @@ if __name__=="__main__":
         if aruco_front:
             # xy_pid = [1, 0.0, 0.0]
             if aruco_mapping:
-                xy_pid = [0.15/2, 0.0025/2, 0.025/2]
+                xy_pid = [0.15/2, 0.015/2, 0.025/2]
                 state['p'] = np.array([xy_pid[0], xy_pid[0], 0.3/2, 1.0], dtype=float)
                 state['i'] = np.array([xy_pid[1], xy_pid[1], 0.0025/2, 0.0], dtype=float)
                 state['d'] = np.array([xy_pid[2], xy_pid[2], 0.15/2, 0.0], dtype=float)
