@@ -39,7 +39,7 @@ if __name__ == '__main__':
     tfBuffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(tfBuffer)
 
-    rate = rospy.Rate(100.0)
+    rate = rospy.Rate(10.0)
     found = False
     while not rospy.is_shutdown():
         try:
@@ -54,13 +54,14 @@ if __name__ == '__main__':
             static_trans.header.frame_id = 'odom'
             static_trans.child_frame_id = 'world'
             print(static_trans)
-            br = tf2_ros.TransformBroadcaster()
+            br = tf2_ros.StaticTransformBroadcaster()
             br.sendTransform(static_trans)
 
             # print(trans1.asMatrix(trans1.translation, trans1.rotation))
             # trans
             # print(trans1)
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            print(e)
             print('not yet found')
             continue
         rate.sleep()

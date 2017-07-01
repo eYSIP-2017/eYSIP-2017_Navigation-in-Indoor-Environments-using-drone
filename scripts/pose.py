@@ -16,28 +16,17 @@ class Pose(object):
     def __str__(self):
         return "x: {}    y: {}   z: {}   yaw: {}".format(self.x, self.y, self.z, self.yaw)
 
-    def convert_geometry_transform_to_pose(self, transform, aruco_mapping=True, aruco_front=True):
+    def convert_geometry_transform_to_pose(self, transform, remap=['x', 'y', 'z', 1]):
         try:
             euler = euler_from_quaternion((transform.orientation.x,
                                             transform.orientation.y,
                                             transform.orientation.z,
                                             transform.orientation.w
                                             ))
-            if aruco_mapping:
-                self.z = transform.position.x
-                self.x = transform.position.z
-                self.y = -transform.position.y
-                self.yaw = euler[1]
-            elif aruco_front:
-                self.x = transform.position.z
-                self.y = -transform.position.y
-                self.z = transform.position.x
-                self.yaw = -euler[1]
-            else:
-                self.x = transform.position.x
-                self.y = transform.position.y
-                self.z = transform.position.z
-                self.yaw = euler[2]
+            self.x = getattr(transform.position, remap[0])
+            self.y = getattr(transform.position, remap[1])
+            self.z = getattr(transform.position, remap[2])
+            self.yaw = euler[remap[3]]
 
         except AttributeError:
             euler = euler_from_quaternion((transform.rotation.x,
@@ -45,15 +34,18 @@ class Pose(object):
                                             transform.rotation.z,
                                             transform.rotation.w
                                             ))
-            self.x = transform.translation.x
-            self.y = transform.translation.y
-            self.z = transform.translation.z
-            self.yaw = euler[2]
+            self.x = getattr(transform.translation, remap[0])
+            self.y = getattr(transform.translation, remap[1])
+            self.z = getattr(transform.translation, remap[2])
+            self.yaw = euler[remap[3]]
                 
             
 
     def as_waypoints(self):
         return np.around(np.array([self.x, self.y, self.z, self.yaw]), decimals=3)
+
+    def just_xy(self):
+        return np.around(np.array([self.y, self.z]), decimals=3)
 
     def store_marker_ids(self, marker_ids):
        self.marker_ids = marker_ids
