@@ -15,10 +15,11 @@ from pose import Pose
 import tf2_ros
 import transform_handler as th
 
+# Various publishers for controling the drone
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-
 take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
 land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
+
 
 def send_trajectory(waypoints, client=None):
     for waypoint in waypoints:
@@ -116,14 +117,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
                 br[i].sendTransform(test_trans[i])
                 br1[i].sendTransform(test_trans1[i])
 
-    # START STATE INFORMATION
-    # print(data.trajectory_start.multi_dof_joint_state.transforms[0])
-    # print(type(data.trajectory_start.multi_dof_joint_state.transforms[0]))
-    # ALL THE WAYPOINT
-    # print(data.trajectory[0].multi_dof_joint_trajectory.points[2].transforms[0])
-    # print(len(data.trajectory[0].multi_dof_joint_trajectory.points))
-    # print(type(data.trajectory[0].multi_dof_joint_trajectory.points[2].transforms[0]))
-
+# IF THE ABOVE FUNCTION DOESNT WORK USE THIS
 def legacy_get_waypoints(data):
     global waypoints, done_waypoints
 
@@ -142,39 +136,6 @@ if __name__ == '__main__':
         real_drone = bool(rospy.get_param('~real_drone', 'false'))
         rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints, True)
 
-        # List of sample waypoints
-        # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
-        # waypoints = [[1.5,0,1.2,0], [1.5,1,1.2,0], [1.5,2,1.2,0]]
-        # waypoints = [[-1.5,0,0.8,0], [-1.5,-0.5,1,0], [-1.5,-1,1.1,0], [-1.5,-1.2,1.2,0], [-1.5,-1.5,1.3,0], [-1.5,-1.8,1.3,0], [-1.5,-2,1.3,0], [-1.5,-2.2,1,0], [-1.5,-2.4,0.9,0], [-1.5,-2.6,0.8,0], [-1.5,-2.6,0.5,0]]
-
-        # waypoints that were generated for lab test, stored for simplicity in tests.
-        # waypoints=[[ -1.5 ,-0.53 , 0.2  ,-0.12],
-        #            # [ -1.5 ,-0.72 , 0.33 , 0.  ],
-        #            [ -1.5 ,-0.92 , 0.46 , 0.12],
-        #            # [ -1.5 ,-1.11 , 0.6  , 0.23],
-        #            [ -1.5 ,-1.3  , 0.72 , 0.33],
-        #            # [ -1.5 ,-1.46 , 0.82 , 0.4 ],
-        #            [ -1.5 ,-1.61 , 0.91 , 0.47],
-        #            # [ -1.5 ,-1.75 , 0.98 , 0.52],
-        #            [ -1.5 ,-1.89 , 1.06 , 0.56],
-        #            # [ -1.5 ,-2.   , 1.1  , 0.58],
-        #            [ -1.5 ,-2.1  , 1.13 , 0.6 ],
-        #            # [ -1.5 ,-2.18 , 1.14 , 0.6 ],
-        #            [ -1.5 ,-2.26 , 1.14 , 0.61],
-        #            # [ -1.5 ,-2.31 , 1.11 , 0.59],
-        #            [ -1.5 ,-2.36 , 1.08 , 0.58],
-        #            # [ -1.5 ,-2.4  , 1.04 , 0.56],
-        #            [ -1.5 ,-2.45 , 0.99 , 0.53],
-        #            # [ -1.5 ,-2.46 , 0.9  , 0.48],
-        #            [ -1.5 ,-2.48 , 0.81 , 0.42],
-        #            # [ -1.5 ,-2.5  , 0.71 , 0.35],
-        #            [ -1.5 ,-2.52 , 0.62 , 0.28],
-        #            # [ -1.5 ,-2.52 , 0.5  , 0.19],
-        #            [ -1.5 ,-2.52 , 0.38 , 0.09],
-        #            # [ -1.5 ,-2.53 , 0.26 ,-0.01],
-        #            [ -1.5 ,-2.53 , 0.14 ,-0.12]]
-
-        # rospy.spin()
         while not done_waypoints:
             pass
         send_trajectory(waypoints)

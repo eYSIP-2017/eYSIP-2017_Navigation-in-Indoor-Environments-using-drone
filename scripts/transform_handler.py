@@ -62,9 +62,6 @@ if __name__ == '__main__':
             br = tf2_ros.StaticTransformBroadcaster()
             br.sendTransform(static_trans)
 
-            # print(trans1.asMatrix(trans1.translation, trans1.rotation))
-            # trans
-            # print(trans1)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             print('not yet found')
             continue
