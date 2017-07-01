@@ -29,9 +29,11 @@ def send_trajectory(waypoints, client=None):
         print(result)
         # break
 
+
 def send_goal(waypoint, client=None):
     if client is None:
-        client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+        client = actionlib.SimpleActionClient(
+            'move_to_waypoint', drone_application.msg.moveAction)
 
     client.wait_for_server()
     print('server_found')
@@ -42,8 +44,10 @@ def send_goal(waypoint, client=None):
     client.wait_for_result()
     return client.get_result()
 
+
 waypoints = deque()
 done_waypoints = False
+
 
 def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
     global waypoints, done_waypoints
@@ -58,13 +62,15 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
         while True:
             try:
                 if real_drone:
-                    trans = tfBuffer.lookup_transform('world', 'odom', rospy.Time())
+                    trans = tfBuffer.lookup_transform(
+                        'world', 'odom', rospy.Time())
                 else:
-                    trans = tfBuffer.lookup_transform('world', 'nav', rospy.Time())
+                    trans = tfBuffer.lookup_transform(
+                        'world', 'nav', rospy.Time())
                 print(trans)
                 break
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                print(e)
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+                print('not yet found')
                 continue
         i = 0
         br = []
@@ -74,7 +80,10 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
 
     for transform in points_list:
         if visualise_trajectory:
-            test_trans.append(th.multiply_transforms(trans.transform, transform.transforms[0]))
+            test_trans.append(
+                th.multiply_transforms(
+                    trans.transform,
+                    transform.transforms[0]))
             trans_stamped = TransformStamped()
             trans_stamped.transform.translation.x = transform.transforms[0].translation.x
             trans_stamped.transform.translation.y = transform.transforms[0].translation.y
@@ -86,7 +95,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
             trans_stamped.header.stamp = rospy.Time.now()
             trans_stamped.header.frame_id = 'odom'
             trans_stamped.child_frame_id = 'original_' + str(i)
-            
+
             test_trans1.append(trans_stamped)
             br1.append(tf2_ros.StaticTransformBroadcaster())
 
@@ -97,9 +106,10 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
 
             br.append(tf2_ros.StaticTransformBroadcaster())
             p.convert_geometry_transform_to_pose(test_trans[i].transform)
-        
+
         if aruco_coords:
-            temp_trans = th.multiply_transforms(trans.transform, transform.transforms[0])
+            temp_trans = th.multiply_transforms(
+                trans.transform, transform.transforms[0])
             temp_trans.header.stamp = rospy.Time.now()
             temp_trans.header.frame_id = 'world'
             temp_trans.child_frame_id = 'test_transform_' + str(i)
@@ -118,6 +128,8 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
                 br1[i].sendTransform(test_trans1[i])
 
 # IF THE ABOVE FUNCTION DOESNT WORK USE THIS
+
+
 def legacy_get_waypoints(data):
     global waypoints, done_waypoints
 
@@ -130,11 +142,16 @@ def legacy_get_waypoints(data):
         # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
 
+
 if __name__ == '__main__':
     try:
         rospy.init_node('follow_trajectory', anonymous=True)
         real_drone = bool(rospy.get_param('~real_drone', 'false'))
-        rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints, True)
+        rospy.Subscriber(
+            "/move_group/display_planned_path",
+            DisplayTrajectory,
+            get_waypoints,
+            True)
 
         while not done_waypoints:
             pass
@@ -142,7 +159,8 @@ if __name__ == '__main__':
         land_pub.publish()
 
     except rospy.ROSInterruptException:
-        client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
+        client = actionlib.SimpleActionClient(
+            'move_to_waypoint', drone_application.msg.moveAction)
         client.wait_for_server()
         client.cancel_goal()
         print('got exception')

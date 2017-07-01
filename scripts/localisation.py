@@ -14,13 +14,14 @@ from time import time
 import numpy as np
 from kalman_filter import extendedKalmanFilter
 
+
 def navdata_callback(nav):
     ekf.roll.observe(nav.rotX, ekf.var_pose_observation_rp_imu)
     ekf.pitch.observe(nav.rotY, ekf.var_pose_observation_rp_imu)
     # TODO: handle jump from -180 to 180
-    ekf.yaw.observe_pose(nav.rotZ, 1*1)
+    ekf.yaw.observe_pose(nav.rotZ, 1 * 1)
     if ekf.yaw.prev is not None:
-        ekf.yaw.observe_speed(nav.rotZ - ekf.yaw.prev, 1*1)
+        ekf.yaw.observe_speed(nav.rotZ - ekf.yaw.prev, 1 * 1)
     ekf.yaw.prev = nav.rotZ
 
     yaw_rad = np.radians(ekf.yaw.state[0])
@@ -31,24 +32,28 @@ def navdata_callback(nav):
     ekf.y.observe_speed(vy_global, ekf.var_speed_observation_xy)
     ekf.z.observe_pose(nav.altd / 1000.0, ekf.var_pose_observation_z_IMU)
     if ekf.z.prev is not None:
-        ekf.z.observe_speed(nav.altd/1000.0 - ekf.z.prev, ekf.var_pose_observation_z_IMU)
+        ekf.z.observe_speed(
+            nav.altd / 1000.0 - ekf.z.prev,
+            ekf.var_pose_observation_z_IMU)
     ekf.z.prev = nav.altd / 1000.0
     # print(ekf.x.state[1])
 
+
 def aruco_callback(aru):
     # print(tf_data.transforms[0].child_frame_id)
-    # if tf_data.transforms[0].child_frame_id == 'camera_position' and tf_data.transforms[0].header.frame_id == 'nav':
+    # if tf_data.transforms[0].child_frame_id == 'camera_position' and 
+    #    tf_data.transforms[0].header.frame_id == 'nav':
     #     print(tf_data.transforms[0])
     # while True:
     #     pass
     # print(type(tf_data.transforms))
     # for transform in tf_data.transforms:
 
-
     trans = None
     while trans is None:
         try:
-            trans, rot = tf_listener.lookupTransform('camera_position', 'nav', rospy.Time(0))
+            trans, rot = tf_listener.lookupTransform(
+                'camera_position', 'nav', rospy.Time(0))
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             print(e)
             continue
@@ -64,12 +69,14 @@ def aruco_callback(aru):
 
     ekf.yaw.observe_pose(np.degrees(euler[1]), ekf.var_pose_observation_yaw)
 
+
 def make_prediction(active_control):
     current_time = time()
     dt = current_time - make_prediction.previous_time
     ekf.prediction(active_control, dt)
     make_prediction.previous_time = current_time
     kalman_pose_pub.publish(ekf.get_current_pose())
+
 
 if __name__ == "__main__":
     rospy.init_node('localisation')
@@ -81,6 +88,6 @@ if __name__ == "__main__":
     rospy.Subscriber('/aruco_poses', ArucoMarker, aruco_callback)
     make_prediction.previous_time = time()
     rospy.Subscriber('/cmd_vel', msg.Twist, make_prediction)
-    
+
     kalman_pose_pub = rospy.Publisher('/kalman_pose', msg.Pose, queue_size=1)
     rospy.spin()

@@ -47,7 +47,6 @@ from pid import pid
 import numpy as np
 
 
-
 doc_msg = """
 Control Your AR Drone!
 ---------------------------
@@ -132,11 +131,12 @@ def get_pose_from_aruco(temp_pose):
     else:
         global_pose.convert_geometry_transform_to_pose(temp_pose.pose)
 
+
 def get_pose_from_kalman(kalman_pose):
     global_pose.convert_geometry_transform_to_pose(kalman_pose)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     marker_pose = Pose()
     global_pose = Pose()
     # print(last_time, dt)
@@ -214,7 +214,7 @@ if __name__=="__main__":
 
         twist = msg.Twist()
         import time
-        while 1:
+        while True:
             state['last_time'] = time.time()
             key = getKey()
             if key in moveBindings.keys():

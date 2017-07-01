@@ -1,4 +1,4 @@
-#!/usr/bin/env python  
+#!/usr/bin/env python
 import rospy
 
 # Because of transformations
@@ -7,13 +7,19 @@ from geometry_msgs.msg import Twist, TransformStamped
 import numpy as np
 from pyquaternion import Quaternion
 
+
 def as_transformation_matrix(trans):
-    mat = Quaternion(trans.rotation.w, trans.rotation.x, trans.rotation.y, trans.rotation.z)
+    mat = Quaternion(
+        trans.rotation.w,
+        trans.rotation.x,
+        trans.rotation.y,
+        trans.rotation.z)
     mat = mat.transformation_matrix
     mat[0][3] = trans.translation.x
     mat[1][3] = trans.translation.y
     mat[2][3] = trans.translation.z
     return mat
+
 
 def as_transformation_ros(mat):
     q = Quaternion(matrix=mat)
@@ -26,6 +32,7 @@ def as_transformation_ros(mat):
     trans.transform.rotation.z = q[3]
     trans.transform.rotation.w = q[0]
     return trans
+
 
 def multiply_transforms(trans1, trans2):
     mat1 = as_transformation_matrix(trans1)
@@ -48,8 +55,10 @@ if __name__ == '__main__':
     found = False
     while not rospy.is_shutdown():
         try:
-            trans1 = tfBuffer.lookup_transform('camera_position', 'world', rospy.Time())
-            trans2 = tfBuffer.lookup_transform(drone_world, 'ardrone_base_frontcam', rospy.Time())
+            trans1 = tfBuffer.lookup_transform(
+                'camera_position', 'world', rospy.Time())
+            trans2 = tfBuffer.lookup_transform(
+                drone_world, 'ardrone_base_frontcam', rospy.Time())
 
             trans = multiply_transforms(trans2.transform, trans1.transform)
             if not found:
