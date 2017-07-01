@@ -1,0 +1,19 @@
+<launch> 
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
+    <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
+    <remap from="/image_raw" to="/ardrone/front/image_raw"/>
+
+    <param name="calibration_file" type="string" value="$(find aruco_mapping)/data/ardrone_front.ini" /> 
+    <param name="num_of_markers" type="int" value="7" />
+    <param name="marker_size" type="double" value="0.50"/>
+    <param name="space_type" type="string" value="3D" />
+    <param name="roi_allowed" type="bool" value="false" />
+    <param name="roi_x" type="int" value="0" />
+    <param name="roi_y" type="int" value="0" />
+    <param name="roi_width" type="int" value="640" />
+    <param name="roi_height" type="int" value="480" />
+    </node>
+
+    <node name="transform_handler" pkg="drone_application" type="transform_handler.py" />
+    <node name="localisation" pkg="drone_application" type="localisation.py" output="screen" />
+</launch>

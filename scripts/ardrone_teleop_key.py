@@ -30,7 +30,7 @@ from __future__ import print_function
 
 import rospy
 
-from geometry_msgs.msg import Twist, Pose, Vector3Stamped
+from geometry_msgs import msg
 from std_msgs.msg import Empty, Float64
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_quaternion
@@ -47,7 +47,8 @@ from pid import pid
 import numpy as np
 
 
-msg = """
+
+doc_msg = """
 Control Your AR Drone!
 ---------------------------
 Moving around:
@@ -131,8 +132,11 @@ def get_pose_from_aruco(temp_pose):
     else:
         global_pose.convert_geometry_transform_to_pose(temp_pose.pose)
 
+def get_pose_from_kalman(kalman_pose):
+    global_pose.convert_geometry_transform_to_pose(kalman_pose)
 
-if __name__ == "__main__":
+
+if __name__=="__main__":
     marker_pose = Pose()
     global_pose = Pose()
     # print(last_time, dt)
@@ -140,18 +144,18 @@ if __name__ == "__main__":
     rospy.init_node('ardrone_teleop')
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
-    rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
+    localisation = bool(rospy.get_param('~localisation', 'true'))
 
-    if aruco_mapping:
+    rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
+    if localisation:
+        rospy.Subscriber('kalman_pose', msg.Pose, get_pose_from_kalman)
+    elif aruco_mapping:
         rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
     else:
         rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
 
-    # rospy.Subscriber("/ardrone/navdata", Navdata, get_angle_from_navdata)
-    # rospy.Subscriber("/magnetic", Vector3Stamped, get_angle_from_navdata)
-
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
-    pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
+    pub = rospy.Publisher('/cmd_vel', msg.Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
     land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
     reset_pub = rospy.Publisher('/ardrone/reset', Empty, queue_size=5)
@@ -168,13 +172,14 @@ if __name__ == "__main__":
     control_speed = 0
     control_turn = 0
     try:
+        print(doc_msg)
         # state dict for pid
         state = dict()
         state['lastError'] = np.array([0., 0., 0., 0.])
 
         # values of x and y may remain same
         if aruco_front:
-            # xy_pid = [1, 0.0, 0.0]
+            xy_pid = [1, 0.0, 0.0]
             if aruco_mapping:
                 xy_pid = [0.15 / 2, 0.015 / 2, 0.025 / 2]
                 state['p'] = np.array(
@@ -207,9 +212,9 @@ if __name__ == "__main__":
         state['derivative'] = np.array([0., 0., 0., 0.])
         yaw_set = 180
 
-        twist = Twist()
+        twist = msg.Twist()
         import time
-        while(1):
+        while 1:
             state['last_time'] = time.time()
             key = getKey()
             if key in moveBindings.keys():
@@ -218,22 +223,6 @@ if __name__ == "__main__":
                 take_off_pub.publish()
             elif key == 'g':
                 land_pub.publish()
-            elif key == 'w':
-                client = actionlib.SimpleActionClient(
-                    'move_to_waypoint', drone_application.msg.moveAction)
-                client.wait_for_server()
-                print('server_found')
-                client.cancel_goal()
-                # import follow_trajectory as ft
-                # import actionlib
-                # import drone_application.msg
-                # client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
-                # waypoints = [[0,0,1,0], [1,0,1,0], [2,0,1,0]]
-                # for waypoint in waypoints:
-                #     print(waypoint)
-                #     result = ft.send_goal(waypoint, client)
-                #     print(result)
-
             elif key == 'p':
                 last_twist = np.zeros(4)
                 marker_not_detected_count = 0

@@ -1,11 +1,11 @@
 <launch> 
  <include file="$(find gazebo_ros)/launch/empty_world.launch"> 
-   <arg name="world_name" value="$(find drone_application)/worlds/small_world.sdf"/> 
+   <arg name="world_name" value="$(find drone_application)/worlds/small_world_with_aruco.sdf"/> 
    <!-- <arg name="world_name" value="$(find turtlebot_gazebo)/worlds/playground.world"/>  -->
    <!-- <arg name="world_name" value="$(find cvg_sim_gazebo)/worlds/ardrone_testworld.world"/>  -->
  </include> 
  <include file="$(find cvg_sim_gazebo)/launch/spawn_quadrotor.launch" > 
    <arg name="model" value="$(find cvg_sim_gazebo)/urdf/quadrotor_sensors.urdf.xacro"/> 
- </include> 
+ </include>
  <!-- <node pkg="tf" type="static_transform_publisher" name="world_to_nav" args="0 0 0 0 0 0 world nav 100" /> -->
 </launch>
