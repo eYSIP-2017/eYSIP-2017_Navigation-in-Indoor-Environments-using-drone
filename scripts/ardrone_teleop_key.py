@@ -92,28 +92,10 @@ def getKey():
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     return key
 
-speed = .2
-turn = 1
-
-
-def get_angle_from_navdata(data):
-    global coords
-    # # mag = np.array([data.vector.x, data.vector.y])
-    # mag = np.array([data.magX, data.magY])
-    # # target = np.array([0.50, 0.])
-    # target = np.array([0., 30.])
-    # target[0] = target[0] if target[0] >= 0 else 0
-
-    # coords[3] = np.arccos(np.sum(mag*target)/(np.sqrt(np.sum(np.square(mag)))* np.sqrt(np.sum(np.square(target)))))
-
-    coords[3] = data.rotZ if data.rotZ > 0 else 360 + data.rotZ
-    # temp_pub.publish(coords[3])
 
 def check_battery(data):
     if data.batteryPercent < 15:
         land_pub.publish()
-
-coords = np.array([0.0,0.0,0.0,0.0])
 
 def get_pose_from_aruco(temp_pose):
     if aruco_mapping:
@@ -142,11 +124,6 @@ def get_pose_from_aruco(temp_pose):
     else:
         global_pose.convert_geometry_transform_to_pose(temp_pose.pose)
 
-
-
-
-def vels(speed,turn):
-    return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
     marker_pose = Pose()
@@ -184,8 +161,6 @@ if __name__=="__main__":
     control_speed = 0
     control_turn = 0
     try:
-        print(msg)
-        print(vels(speed,turn))
         # state dict for pid
         state = dict()
         state['lastError'] = np.array([0.,0.,0.,0.])

@@ -35,6 +35,11 @@ def multiply_transforms(trans1, trans2):
 
 if __name__ == '__main__':
     rospy.init_node('transform_handler')
+    real_drone = bool(rospy.get_param('~real_drone', 'false'))
+    if real_drone:
+        drone_world = 'odom'
+    else:
+        drone_world = 'nav'
 
     tfBuffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(tfBuffer)
@@ -44,14 +49,14 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         try:
             trans1 = tfBuffer.lookup_transform('camera_position', 'world', rospy.Time())
-            trans2 = tfBuffer.lookup_transform('odom', 'ardrone_base_frontcam', rospy.Time())
+            trans2 = tfBuffer.lookup_transform(drone_world, 'ardrone_base_frontcam', rospy.Time())
 
             trans = multiply_transforms(trans2.transform, trans1.transform)
             if not found:
                 static_trans = trans
                 found = True
             static_trans.header.stamp = rospy.Time.now()
-            static_trans.header.frame_id = 'odom'
+            static_trans.header.frame_id = drone_world
             static_trans.child_frame_id = 'world'
             print(static_trans)
             br = tf2_ros.StaticTransformBroadcaster()
@@ -61,7 +66,6 @@ if __name__ == '__main__':
             # trans
             # print(trans1)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            print(e)
             print('not yet found')
             continue
         rate.sleep()
