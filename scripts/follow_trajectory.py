@@ -20,7 +20,7 @@ pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
 take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
 land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
 
-def generate_trajectory(waypoints, client=None):
+def send_trajectory(waypoints, client=None):
     for waypoint in waypoints:
         print(waypoint)
         print(type(waypoint))
@@ -44,8 +44,7 @@ def send_goal(waypoint, client=None):
 waypoints = deque()
 done_waypoints = False
 
-def get_waypoints(data, aruco_coords=False):
-    print('in')
+def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
     global waypoints, done_waypoints
 
     points_list = data.trajectory[0].multi_dof_joint_trajectory.points
@@ -57,19 +56,23 @@ def get_waypoints(data, aruco_coords=False):
         print('going to find tf')
         while True:
             try:
-                trans = tfBuffer.lookup_transform('world', 'odom', rospy.Time())
+                if real_drone:
+                    trans = tfBuffer.lookup_transform('world', 'odom', rospy.Time())
+                else:
+                    trans = tfBuffer.lookup_transform('world', 'nav', rospy.Time())
                 print(trans)
                 break
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                 print(e)
                 continue
-    i = 0
-    br = []
-    test_trans = []
-    br1 = []
-    test_trans1 = []
+        i = 0
+        br = []
+        test_trans = []
+        br1 = []
+        test_trans1 = []
+
     for transform in points_list:
-        if aruco_coords:
+        if visualise_trajectory:
             test_trans.append(th.multiply_transforms(trans.transform, transform.transforms[0]))
             trans_stamped = TransformStamped()
             trans_stamped.transform.translation.x = transform.transforms[0].translation.x
@@ -84,59 +87,67 @@ def get_waypoints(data, aruco_coords=False):
             trans_stamped.child_frame_id = 'original_' + str(i)
             
             test_trans1.append(trans_stamped)
-
             br1.append(tf2_ros.StaticTransformBroadcaster())
 
             test_trans[i].header.stamp = rospy.Time.now()
             test_trans[i].header.frame_id = 'world'
             test_trans[i].child_frame_id = 'test_transform_' + str(i)
-            # test_trans[i].transform.translation.z, test_trans[i].transform.translation.y = test_trans[i].transform.translation.y, test_trans[i].transform.translation.z
-            # test_trans[i].transform.translation.z, test_trans[i].transform.translation.x = test_trans[i].transform.translation.x, test_trans[i].transform.translation.z
             test_trans[i].transform.translation.y *= -1
-            # test_trans[i].transform.translation.x *= -1
 
-
-            # test_trans1[i].header.stamp = rospy.Time.now()
-            # test_trans1[i].header.frame_id = 'odom'
-            # test_trans1[i].child_frame_id = 'test_transform1_' + str(i)
-            # print(test_trans)
-            # print(i)
             br.append(tf2_ros.StaticTransformBroadcaster())
-            # br[i].sendTransform(test_trans)
-            p.convert_geometry_transform_to_pose(test_trans[i].transform)#, ['z', 'x', 'y', 1])
+            p.convert_geometry_transform_to_pose(test_trans[i].transform)
+        
+        if aruco_coords:
+            temp_trans = th.multiply_transforms(trans.transform, transform.transforms[0])
+            temp_trans.header.stamp = rospy.Time.now()
+            temp_trans.header.frame_id = 'world'
+            temp_trans.child_frame_id = 'test_transform_' + str(i)
+            temp_trans.transform.translation.y *= -1
+            p.convert_geometry_transform_to_pose(temp_trans)
         else:
             p.convert_geometry_transform_to_pose(transform.transforms[0])
-        a = np.around(p.as_waypoints(), decimals=2)
-        print(a)
-        waypoints.append(list(a))
+        waypoints.append(np.around(p.as_waypoints(), decimals=2))
         i += 1
         # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
-    while True:
-        for i in range(len(test_trans)):
-            br[i].sendTransform(test_trans[i])
-            br1[i].sendTransform(test_trans1[i])
-    # print(waypoints)
-
-    # generate_trajectory(waypoints)
+    if visualise_trajectory:
+        while True:
+            for i in range(len(test_trans)):
+                br[i].sendTransform(test_trans[i])
+                br1[i].sendTransform(test_trans1[i])
 
     # START STATE INFORMATION
     # print(data.trajectory_start.multi_dof_joint_state.transforms[0])
     # print(type(data.trajectory_start.multi_dof_joint_state.transforms[0]))
-
     # ALL THE WAYPOINT
     # print(data.trajectory[0].multi_dof_joint_trajectory.points[2].transforms[0])
     # print(len(data.trajectory[0].multi_dof_joint_trajectory.points))
     # print(type(data.trajectory[0].multi_dof_joint_trajectory.points[2].transforms[0]))
 
+def legacy_get_waypoints(data):
+    global waypoints, done_waypoints
+
+    points_list = data.trajectory[0].multi_dof_joint_trajectory.points
+    p = Pose()
+
+    for transform in points_list:
+        p.convert_geometry_transform_to_pose(transform.transforms[0])
+        waypoints.append(list(p.as_waypoints()))
+        # waypoints[-1][2] = waypoints[-1][2] + 3
+    done_waypoints = True
+
 if __name__ == '__main__':
     try:
         rospy.init_node('follow_trajectory', anonymous=True)
+        real_drone = bool(rospy.get_param('~real_drone', 'false'))
         rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, get_waypoints, True)
 
+        # List of sample waypoints
         # waypoints = [[0,0,4,-3*np.pi/4], [1, 3, 2,-3*np.pi/4], [2,-1,4,3*np.pi/4], [3,0,4,3*np.pi/4]]
         # waypoints = [[1.5,0,1.2,0], [1.5,1,1.2,0], [1.5,2,1.2,0]]
-        waypoints = [[-1.5,0,0.8,0], [-1.5,-0.5,1,0], [-1.5,-1,1.1,0], [-1.5,-1.2,1.2,0], [-1.5,-1.5,1.3,0], [-1.5,-1.8,1.3,0], [-1.5,-2,1.3,0], [-1.5,-2.2,1,0], [-1.5,-2.4,0.9,0], [-1.5,-2.6,0.8,0], [-1.5,-2.6,0.5,0]]
+        # waypoints = [[-1.5,0,0.8,0], [-1.5,-0.5,1,0], [-1.5,-1,1.1,0], [-1.5,-1.2,1.2,0], [-1.5,-1.5,1.3,0], [-1.5,-1.8,1.3,0], [-1.5,-2,1.3,0], [-1.5,-2.2,1,0], [-1.5,-2.4,0.9,0], [-1.5,-2.6,0.8,0], [-1.5,-2.6,0.5,0]]
+
+        # waypoints that were generated for lab test, stored for simplicity in tests.
         # waypoints=[[ -1.5 ,-0.53 , 0.2  ,-0.12],
         #            # [ -1.5 ,-0.72 , 0.33 , 0.  ],
         #            [ -1.5 ,-0.92 , 0.46 , 0.12],
@@ -164,25 +175,11 @@ if __name__ == '__main__':
         #            [ -1.5 ,-2.53 , 0.14 ,-0.12]]
 
         # rospy.spin()
-        # while not done_waypoints:
-        #     pass
-        generate_trajectory(waypoints)
+        while not done_waypoints:
+            pass
+        send_trajectory(waypoints)
         land_pub.publish()
 
-        
-
-        # while not rospy.is_shutdown():
-        #     trans, rot = moniter_transform(tf_listener)
-        #     if trans is None:
-        #         continue
-        #     generate_trajectory(trans, rot, tf_listener)
-        #     break
-        # take_off_pub.publish()
-        # print('published take off')
-        # rospy.Subscriber("/ardrone/navdata", Navdata, moniter_navdata)
-        # rospy.Subscriber("/move_group/display_planned_path", DisplayTrajectory, callback)
-        # spin() simply keeps python from exiting until this node is stopped
-        # rospy.spin()
     except rospy.ROSInterruptException:
         client = actionlib.SimpleActionClient('move_to_waypoint', drone_application.msg.moveAction)
         client.wait_for_server()
