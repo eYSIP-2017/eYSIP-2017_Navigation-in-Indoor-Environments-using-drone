@@ -85,6 +85,11 @@ moveBindings = {
 
 
 def getKey():
+    """Gets a key from keyboard
+
+    Returns:
+        string: The key pressed
+    """
     tty.setraw(sys.stdin.fileno())
     rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
     if rlist:
@@ -97,11 +102,24 @@ def getKey():
 
 
 def check_battery(data):
+    """Checks the battery and lands if low"""
     if data.batteryPercent < 15:
         land_pub.publish()
 
 
 def get_pose_from_aruco(temp_pose):
+    """Callback for pose using aruco
+    
+    Depending on the value of aruco_mapping this function will
+    store the global_camera_pose using aruco_mapping or
+    store the camera pose using viewpoint estimation.
+
+    modify global poses based on this convention:
+        global_pose.x = x-axis - This is correct no need to change
+        global_pose.y = y-axis (-ve when drone is on the left of the marker's origin)
+        global_pose.z = z-axis (+ve when drone is abose the marker's origin)
+
+    """
     if aruco_mapping:
         marker_pose.store_marker_ids(temp_pose.marker_ids)
         if len(temp_pose.marker_ids) != 0:
@@ -122,17 +140,12 @@ def get_pose_from_aruco(temp_pose):
 
         global_pose.convert_geometry_transform_to_pose(
             temp_pose.global_camera_pose)
-        """
-        modify global poses based on this convention:
-            global_pose.x = x-axis - This is correct no need to change
-            global_pose.y = y-axis (-ve when drone is on the left of the marker's origin)
-            global_pose.z = z-axis (+ve when drone is abose the marker's origin)
-        """
     else:
         global_pose.convert_geometry_transform_to_pose(temp_pose.pose)
 
 
 def get_pose_from_kalman(kalman_pose):
+    """Get and store pose generated my EKF"""
     global_pose.convert_geometry_transform_to_pose(kalman_pose)
 
 

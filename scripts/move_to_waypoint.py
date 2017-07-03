@@ -13,11 +13,22 @@ from pose import Pose
 
 
 class moveAction(object):
+    """Action server class to move drone on waypoints.
+
+    This class in the action server used to move the drone on 
+    waypoints generated. It handles the actual movement of the
+    drone and publishes the feedback.
+
+    Args:
+        name (string): name of the server
+        real_drone (bool): true if working with real drone not simulation
+        aruco_mapping (bool): true, using aruco_mapping and not odometry
+    """
     # create messages that are used to publish feedback/result
     _feedback = drone_application.msg.moveFeedback()
     _result = drone_application.msg.moveResult()
 
-    def __init__(self, name):
+    def __init__(self, name, real_drone, aruco_mapping):
         self._action_name = name
         self.tf_listener = tf.TransformListener()
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
@@ -29,16 +40,22 @@ class moveAction(object):
         self._as.start()
         self.empty_twist = Twist()
         self.camera_pose = Pose()
+        self.real_drone = real_drone
+        self.aruco_mapping = aruco_mapping
         print('server ready')
         print(
             'Be careful, once a list of waypoints is given there is no way to stop execution yet.')
 
-    # returns the current pose of the drone
     def moniter_transform(self):
+        """Moniters the current pose of the drone based on odometry.
+
+        Returns:
+            numpy.array: containing the x, y, z, yaw values
+        """
         trans = None
         while trans is None:
             try:
-                if real_drone:
+                if self.real_drone:
                     trans, rot = self.tf_listener.lookupTransform(
                         '/ardrone_base_link', '/odom', rospy.Time(0))
                 else:
@@ -50,12 +67,30 @@ class moveAction(object):
         return np.array([trans[0], trans[1], trans[2], euler[2]])
 
     def get_camera_pose(self, temp_pose):
+        """Callback for global camera pose monitered by aruco_mapping.
+
+        Args:
+            temp_pose (ArucoMaker): topic published by aruco_mapping.
+
+        Stores:
+            camera_pose (pose.Pose): stores global camera pose in Pose.
+
+        """
         self.camera_pose.convert_geometry_transform_to_pose(
             temp_pose.global_camera_pose, ['z', 'y', 'x', 1])
         self.camera_pose.x *= -1
 
     def move_to_waypoint(self, waypoint):
-        if aruco_mapping:
+        """Gets the drone to actually move to a waypoint.
+        
+        Takes the waypoint and the current pose of controls pid
+        It calls pid until the current pose is equal to the waypoint
+        with a cetatin error tolerence.
+
+        Args:
+            waypoint (numpy.array): contains the waypoint to travel to
+        """
+        if self.aruco_mapping:
             current_pose = self.camera_pose.as_waypoints()
         else:
             current_pose = self.moniter_transform()
@@ -81,7 +116,7 @@ class moveAction(object):
         # not controlling yaw since drone was broken
         while not np.allclose(
                 current_pose[0:-1], waypoint[0:-1], atol=0.1):
-            if aruco_mapping:
+            if self.aruco_mapping:
                 current_pose = self.camera_pose.as_waypoints()
                 pid_twist, state = pid(current_pose, waypoint, state)
                 if (current_pose == np.array([0., 0., 0., 0.])).all():
@@ -113,6 +148,13 @@ class moveAction(object):
             self._as.publish_feedback(self._feedback)
 
     def execute_cb(self, goal):
+        """Starts Excecution of movement
+
+        receives the goal and calls move_to_waypoint.
+
+        Args:
+            goal (MoveAction.goal): the goal to which the drone has to move
+        """
         # helper variables
         success = True
 

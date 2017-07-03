@@ -9,6 +9,14 @@ from pyquaternion import Quaternion
 
 
 def as_transformation_matrix(trans):
+    """Converts geomety_msgs.msg.TransformStamped to Transformation matrix.
+
+    Args:
+        trans (geomety_msgs.msg.TransformStamped): transform to be converted.
+
+    Returns:
+        numpy.array: transformation matrix generated.
+    """
     mat = Quaternion(
         trans.rotation.w,
         trans.rotation.x,
@@ -22,6 +30,14 @@ def as_transformation_matrix(trans):
 
 
 def as_transformation_ros(mat):
+    """Converts Transformation matrix to geomety_msgs.msg.TransformStamped.
+
+    Args:
+        mat (numpy.array): transformation matrix to be converted.
+
+    Returns:
+        geomety_msgs.msg.TransformStamped: transform generated.
+    """
     q = Quaternion(matrix=mat)
     trans = TransformStamped()
     trans.transform.translation.x = mat[0][3]
@@ -35,6 +51,15 @@ def as_transformation_ros(mat):
 
 
 def multiply_transforms(trans1, trans2):
+    """Multiplies 2 transforms.
+
+    Args:
+        trans1 (geomety_msgs.msg.TransformStamped): first transform to be multiplied.
+        trans2 (geomety_msgs.msg.TransformStamped): second transform to be multiplied.
+
+    Returns:
+        geomety_msgs.msg.TransformStamped: final transform.
+    """
     mat1 = as_transformation_matrix(trans1)
     mat2 = as_transformation_matrix(trans2)
     return as_transformation_ros(np.dot(mat1, mat2))

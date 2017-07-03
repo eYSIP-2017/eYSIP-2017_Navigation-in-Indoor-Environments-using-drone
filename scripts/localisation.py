@@ -16,6 +16,11 @@ from kalman_filter import extendedKalmanFilter
 
 
 def navdata_callback(nav):
+    """Callback function for Navdata
+
+    Args:
+        nav (Navdata): the data sent by the drone
+    """
     ekf.roll.observe(nav.rotX, ekf.var_pose_observation_rp_imu)
     ekf.pitch.observe(nav.rotY, ekf.var_pose_observation_rp_imu)
     # TODO: handle jump from -180 to 180
@@ -40,15 +45,11 @@ def navdata_callback(nav):
 
 
 def aruco_callback(aru):
-    # print(tf_data.transforms[0].child_frame_id)
-    # if tf_data.transforms[0].child_frame_id == 'camera_position' and 
-    #    tf_data.transforms[0].header.frame_id == 'nav':
-    #     print(tf_data.transforms[0])
-    # while True:
-    #     pass
-    # print(type(tf_data.transforms))
-    # for transform in tf_data.transforms:
-
+    """Callback for aruco_mapping
+    
+    Args:
+        aru (ArucoMarker): data published by aruco_mapping.
+    """
     trans = None
     while trans is None:
         try:
@@ -71,6 +72,15 @@ def aruco_callback(aru):
 
 
 def make_prediction(active_control):
+    """Callback for /cmd_vel
+    
+    Reads the current control, combines with odometry and aruco_mapping
+    values using EKF and then publishes a pose which it believes to be
+    the most accurate representation.
+
+    Args:
+        active_control (Twist): the control being sent to drone
+    """
     current_time = time()
     dt = current_time - make_prediction.previous_time
     ekf.prediction(active_control, dt)

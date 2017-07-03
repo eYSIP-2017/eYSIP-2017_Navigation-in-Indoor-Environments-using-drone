@@ -22,27 +22,28 @@ land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
 
 
 def send_trajectory(waypoints, client=None):
-    for waypoint in waypoints:
-        print(waypoint)
-        print(type(waypoint))
-        result = send_goal(waypoint, client)
-        print(result)
-        # break
+    """Send waypoints to follow
+    
+    Sends individual waypoints as goals to moveaction server.
 
-
-def send_goal(waypoint, client=None):
+    Args:
+        Client (SimpleActionClient): sent if client already created
+    """
     if client is None:
         client = actionlib.SimpleActionClient(
             'move_to_waypoint', drone_application.msg.moveAction)
+    for waypoint in waypoints:
+        print(waypoint)
+        print(type(waypoint))
 
-    client.wait_for_server()
-    print('server_found')
+        client.wait_for_server()
+        print('server_found')
 
-    goal = drone_application.msg.moveGoal(waypoint)
-    client.send_goal(goal)
+        goal = drone_application.msg.moveGoal(waypoint)
+        client.send_goal(goal)
 
-    client.wait_for_result()
-    return client.get_result()
+        client.wait_for_result()
+        print(client.get_result())
 
 
 waypoints = deque()
@@ -50,6 +51,21 @@ done_waypoints = False
 
 
 def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
+    """Extracts the waypoints from move_group/display_planned_path
+    
+    Very dirty implimentation, if a neater version is needed use
+    the legacy_get_waypoints function.
+    
+    Note:
+        If visualisation is needed aruco_coords should be true.
+        If visualise_trajectory is true no momement will take place
+        it will be stuck in a while loop which will exit only by exiting
+        the module.
+
+    Args:
+        aruco_coords (bool): true if trajectory needed in aruco coords
+        visualise_trajectory (bool): true if visualisaiton needed
+    """
     global waypoints, done_waypoints
 
     points_list = data.trajectory[0].multi_dof_joint_trajectory.points
@@ -131,6 +147,14 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
 
 
 def legacy_get_waypoints(data):
+    """Extracts the waypoints from move_group/display_planned_path
+
+    Legacy function of get_waypoints, this is a way neater implimentation.
+
+    Args:
+        aruco_coords (bool): true if trajectory needed in aruco coords
+        visualise_trajectory (bool): true if visualisaiton needed
+    """
     global waypoints, done_waypoints
 
     points_list = data.trajectory[0].multi_dof_joint_trajectory.points

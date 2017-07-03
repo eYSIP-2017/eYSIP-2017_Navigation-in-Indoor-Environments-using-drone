@@ -18,7 +18,8 @@ error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
 
 def pid(data, set_array, state):
-    """
+    """Runs one step of PID.
+    
     convention in which to send data:
     data[0] = x-axis (+ve is front)
     data[1] = y-axis (-ve is left)
@@ -31,7 +32,14 @@ def pid(data, set_array, state):
     data[2] = z-axis (+ve is up)
     data[3] = yaw (+ve is counter-clockwise
 
-    data, set_array are numpy arrays
+    Args:
+        data (numpy.array): current pose of the drone
+        set_array (numpy.array): pose to attain
+        state (dict): storing all the values to be used in every call to pid
+
+    Returns:
+        geometry_msgs.msg.Twist: twist to be published to cmd_vel for drone
+        dict: storing all the values to be used in every call to pid
     """
     current_time = time.time()
     dt = current_time - state['last_time']
