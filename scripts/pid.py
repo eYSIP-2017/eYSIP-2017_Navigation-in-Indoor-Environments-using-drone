@@ -48,6 +48,7 @@ def pid(data, set_array, state):
     error = set_array - np.array([data[0], data[1], data[2], data[3]])
     error = np.around(error, decimals=2)
 
+    # publish errors for plotting.
     pubx.publish(error[0])
     puby.publish(error[1])
     pubz.publish(error[2])
@@ -67,6 +68,7 @@ def pid(data, set_array, state):
     twist = Twist()
     f = np.clip(f, -0.5, 0.5)
 
+    # converting from world frame to drone frame
     twist.linear.x = (f[0] * np.cos(error[3])) - (f[1] * np.sin(error[3]))
     twist.linear.y = (f[1] * np.cos(error[3])) + (f[0] * np.sin(error[3]))
     twist.linear.z = f[2]

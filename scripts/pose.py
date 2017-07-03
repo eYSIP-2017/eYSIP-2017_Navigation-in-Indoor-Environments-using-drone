@@ -60,6 +60,7 @@ class Pose(object):
                                            transform.orientation.z,
                                            transform.orientation.w
                                            ))
+            # getting the attribute based on arg
             self.x = getattr(transform.position, remap[0])
             self.y = getattr(transform.position, remap[1])
             self.z = getattr(transform.position, remap[2])
@@ -71,6 +72,7 @@ class Pose(object):
                                            transform.rotation.z,
                                            transform.rotation.w
                                            ))
+            # getting the attribute based on arg
             self.x = getattr(transform.translation, remap[0])
             self.y = getattr(transform.translation, remap[1])
             self.z = getattr(transform.translation, remap[2])

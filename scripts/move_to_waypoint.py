@@ -97,6 +97,7 @@ class moveAction(object):
         else:
             current_pose = self.moniter_transform()
 
+        # dict for PID
         state = dict()
         state['lastError'] = np.array([0., 0., 0., 0.])
         state['integral'] = np.array([0., 0., 0., 0.])
@@ -121,13 +122,17 @@ class moveAction(object):
             if self.aruco_mapping:
                 current_pose = self.camera_pose.as_waypoints()
                 pid_twist, state = pid(current_pose, waypoint, state)
+
+                # if no aruco is being detected
                 if (current_pose == np.array([0., 0., 0., 0.])).all():
                     marker_not_detected_count += 1
 
+                # if the feed is stuck
                 if (last_twist == np.array(
                         [pid_twist.linear.x, pid_twist.linear.y, pid_twist.linear.z, pid_twist.angular.z])).all():
                     marker_not_detected_count += 1
 
+                # if we are sure it is stuck or no aruco found
                 if marker_not_detected_count > 2:
                     self.pub.publish(self.empty_twist)
                     marker_not_detected_count = 0

@@ -95,24 +95,26 @@ def get_pose_from_aruco(temp_pose):
         global_pose.z = z-axis (+ve when drone is abose the marker's origin)
 
     """
+    # This functionality is for moving from one aruco to the next.
     if aruco_mapping:
         marker_pose.store_marker_ids(temp_pose.marker_ids)
         if len(temp_pose.marker_ids) != 0:
+            # if max found then find the lowest id else find the highest
             if marker_pose.get_max_found():
                 current_marker_id = min(temp_pose.marker_ids)
+                # if reached back to start land
                 if current_marker_id == 13:
                     pub.publish(twist)
                     land_pub.publish()
             else:
                 current_marker_id = max(temp_pose.marker_ids)
-
+            # if largest value found set max_found to true
             if current_marker_id == 19:
                 marker_pose.set_max_found(True)
-        # if marker_pose.get_current_marker_id() is not None and
-        # len(temp_pose.marker_ids) != 0:
+        if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
             marker_pose.convert_geometry_transform_to_pose(
                 temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
-
+        # store global camera pose
         global_pose.convert_geometry_transform_to_pose(
             temp_pose.global_camera_pose)
     else:
@@ -130,18 +132,22 @@ if __name__ == "__main__":
     # print(last_time, dt)
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
+    # get commmand line args
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
     localisation = bool(rospy.get_param('~localisation', 'true'))
 
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
+    # subscribing to aruco_mapping is essential for localisation
     if localisation:
         rospy.Subscriber('kalman_pose', msg.Pose, get_pose_from_kalman)
+        aruco_mapping = True
     elif aruco_mapping:
         rospy.Subscriber('aruco_poses', ArucoMarker, get_pose_from_aruco)
     else:
         rospy.Subscriber("/Estimated_marker", Marker, get_pose_from_aruco)
 
+    # initialising various publishers
     temp_pub = rospy.Publisher('/yaw', Float64, queue_size=5)
     pub = rospy.Publisher('/cmd_vel', msg.Twist, queue_size=5)
     take_off_pub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=5)
@@ -150,15 +156,7 @@ if __name__ == "__main__":
 
     marker_ids = marker_pose.get_marker_ids()
 
-    ori_z = 0
     xyz = (0, 0, 0, 0, 0, 0)
-    th = 0
-    status = 0
-    acc = 0.1
-    target_speed = 0
-    target_turn = 0
-    control_speed = 0
-    control_turn = 0
     try:
         print(doc_msg)
         # state dict for pid
@@ -208,10 +206,13 @@ if __name__ == "__main__":
             if key in moveBindings.keys():
                 xyz = moveBindings[key]
             elif key == 't':
+                # take off
                 take_off_pub.publish()
             elif key == 'g':
+                # land
                 land_pub.publish()
             elif key == 'p':
+                # start PID
                 last_twist = np.zeros(4)
                 marker_not_detected_count = 0
                 while True:
@@ -221,15 +222,18 @@ if __name__ == "__main__":
                         current_pose = global_pose.as_waypoints()
 
                         pid_twist, state = pid(
-                            current_pose, np.array([0, 0, 1.5, 0]), state)
+                            current_pose, set_array, state)
 
+                        # if no aruco is being detected
                         if (current_pose == np.array([0., 0., 0., 0.])).all():
                             marker_not_detected_count += 1
 
+                        # if the feed is stuck
                         if (last_twist == np.array(
                                 [pid_twist.linear.x, pid_twist.linear.y, pid_twist.linear.z, pid_twist.angular.z])).all():
                             marker_not_detected_count += 1
 
+                        # if we are sure it is stuck or no aruco found
                         if marker_not_detected_count > 2:
                             pub.publish(twist)
                             marker_not_detected_count = 0
@@ -249,6 +253,7 @@ if __name__ == "__main__":
 
                     key = getKey()
                     if key == 's':
+                        # Stop PID.
                         state['lastError'] = np.array([0., 0., 0., 0.])
                         state['integral'] = np.array([0., 0., 0., 0.])
                         state['derivative'] = np.array([0., 0., 0., 0.])
@@ -295,9 +300,6 @@ if __name__ == "__main__":
                 state['p'][1] = float(pid_consts[0])
                 state['i'][1] = float(pid_consts[1])
                 state['d'][1] = float(pid_consts[2])
-            elif key == 'x':
-                state['i'][0] = input()
-                state['i'][1] = state['i'][0]
             elif key == ' ':
                 reset_pub.publish()
             elif key == 'f':
@@ -316,6 +318,7 @@ if __name__ == "__main__":
             elif (key == '\x03'):
                 break
 
+            # Do not allow publishing twist values larget than 0.3
             xyz = np.clip(np.array(xyz), -0.3, 0.3)
             twist.linear.x = xyz[0]
             twist.linear.y = xyz[1]

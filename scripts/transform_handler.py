@@ -86,14 +86,18 @@ if __name__ == '__main__':
             trans2 = tfBuffer.lookup_transform(
                 drone_world, 'ardrone_base_frontcam', rospy.Time())
 
+            # get the transform fro drone_world to aruco's world
             trans = multiply_transforms(trans2.transform, trans1.transform)
             if not found:
                 static_trans = trans
                 found = True
+
+            # add frames to the transform
             static_trans.header.stamp = rospy.Time.now()
             static_trans.header.frame_id = drone_world
             static_trans.child_frame_id = 'world'
             print(static_trans)
+            # Publish a static transform
             br = tf2_ros.StaticTransformBroadcaster()
             br.sendTransform(static_trans)
 

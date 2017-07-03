@@ -101,6 +101,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
                 th.multiply_transforms(
                     trans.transform,
                     transform.transforms[0]))
+            # create a transform stamped variable to store planned trajectory.
             trans_stamped = TransformStamped()
             trans_stamped.transform.translation.x = transform.transforms[0].translation.x
             trans_stamped.transform.translation.y = transform.transforms[0].translation.y
@@ -116,6 +117,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
             test_trans1.append(trans_stamped)
             br1.append(tf2_ros.StaticTransformBroadcaster())
 
+            # add the frames to the trajectory in aruco's world frame
             test_trans[i].header.stamp = rospy.Time.now()
             test_trans[i].header.frame_id = 'world'
             test_trans[i].child_frame_id = 'test_transform_' + str(i)
@@ -125,6 +127,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
             p.convert_geometry_transform_to_pose(test_trans[i].transform)
 
         if aruco_coords:
+            # make the transform from odom/nav to world.
             temp_trans = th.multiply_transforms(
                 trans.transform, transform.transforms[0])
             temp_trans.header.stamp = rospy.Time.now()
@@ -136,9 +139,9 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
             p.convert_geometry_transform_to_pose(transform.transforms[0])
         waypoints.append(np.around(p.as_waypoints(), decimals=2))
         i += 1
-        # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
     if visualise_trajectory:
+        # stay in this loop if visualisation in needed.
         while True:
             for i in range(len(test_trans)):
                 br[i].sendTransform(test_trans[i])
@@ -162,9 +165,10 @@ def legacy_get_waypoints(data):
     p = Pose()
 
     for transform in points_list:
+        # create a list of waypoints in pose.Pose after convertion from
+        # planned trajectory
         p.convert_geometry_transform_to_pose(transform.transforms[0])
         waypoints.append(list(p.as_waypoints()))
-        # waypoints[-1][2] = waypoints[-1][2] + 3
     done_waypoints = True
 
 
@@ -178,6 +182,8 @@ if __name__ == '__main__':
             get_waypoints,
             True)
 
+        # wait until waypoints are extracted from
+        # move_group/display_planned_path
         while not done_waypoints:
             pass
         send_trajectory(waypoints)
