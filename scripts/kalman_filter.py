@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Implimenation of Extended Kalman Filter."""
 from __future__ import print_function
 
 import rospy
@@ -10,21 +11,22 @@ import numpy as np
 
 
 class pFilter(object):
-    """Manipulator for only pose quantities
-    
+    """Manipulator for only pose quantities.
+
     Artibutes:
         state (numpy.array): the current state of quanity
         var (float): variance of quantity
         prev (float): previous value of quantity
     """
+
     def __init__(self):
         self.state = 0
         self.var = 0.001
         self.prev = None
 
     def observe(self, obs, obs_var):
-        """Make an observation step
-        
+        """Make an observation step.
+
         Args:
             obs (numpy.array): observation array
             obs_var (float): variance array
@@ -34,7 +36,7 @@ class pFilter(object):
         self.var = self.var * obs_var / (self.var + obs_var)
 
     def predict(self, dt, speed_var, control_gain):
-        """Prediction step
+        """Prediction step.
 
         Args:
             dt (float): time difference
@@ -46,21 +48,22 @@ class pFilter(object):
 
 
 class pvFilter(object):
-    """Manipulator for pose and velocity quantities
-    
+    """Manipulator for pose and velocity quantities.
+
     Artibutes:
         state (numpy.array): the current state of quanity
         var (numpy.array): covariance of quantity
         prev (numpy.array): previous value of quantity
     """
+
     def __init__(self):
         self.state = np.zeros(2)
         self.var = np.array([[0.001, 0.], [0., 0.001]])
         self.prev = None
 
     def observe_pose(self, obs, obs_var):
-        """Make an observation step
-        
+        """Make an observation step.
+
         Args:
             obs (numpy.array): observation array
             obs_var (numpy.array): variance array
@@ -73,8 +76,8 @@ class pvFilter(object):
         self.var = np.dot(self.var, tmp)
 
     def observe_speed(self, obs, obs_var):
-        """Make an observation step
-        
+        """Make an observation step.
+
         Args:
             obs (numpy.array): observation array
             obs_var (numpy.array): variance array
@@ -95,7 +98,7 @@ class pvFilter(object):
             control_gains,
             cov_fac=1,
             speed_var_fac=1):
-        """Prediction step using gaussion acceleration
+        """Prediction step using gaussion acceleration.
 
         Args:
             dt (float): time difference
@@ -118,7 +121,7 @@ class pvFilter(object):
     # calculates prediction using the given uncertainty matrix
     # vars is var(0) var(1) covar(0,1)
     def predict(self, dt, vars, control_gains):
-        """Prediction step
+        """Prediction step.
 
         Args:
             dt (float): time difference
@@ -137,11 +140,12 @@ class pvFilter(object):
 
 
 class extendedKalmanFilter(object):
-    """Class resposible to exceute EKF
+    """Class resposible to exceute EKF.
 
     This is NOT fully developed and tested, may not behave
     as it is expected to.
     """
+
     def __init__(self):
         self.x = pvFilter()
         self.y = pvFilter()
@@ -171,7 +175,7 @@ class extendedKalmanFilter(object):
                     self.yaw.state[0], 3))
 
     def get_current_pose(self):
-        """Gets current pose/state of the drone"""
+        """Get current pose/state of the drone."""
         pose = msg.Pose()
         pose.position.x = self.x.state[0]
         pose.position.y = self.y.state[0]
@@ -187,7 +191,7 @@ class extendedKalmanFilter(object):
         return pose
 
     def prediction(self, active_control, dt):
-        """Make a prediciton Step"""
+        """Make a prediciton Step."""
         # proportionality constants
         c1 = 0.58
         c2 = 17.8

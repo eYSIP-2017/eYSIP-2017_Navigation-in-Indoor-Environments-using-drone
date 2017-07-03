@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Generic PID implimentation."""
 import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
@@ -18,8 +19,8 @@ error_pub = rospy.Publisher('pid_error', pid_error, queue_size=5)
 
 
 def pid(data, set_array, state):
-    """Runs one step of PID.
-    
+    """Run one step of PID.
+
     convention in which to send data:
     data[0] = x-axis (+ve is front)
     data[1] = y-axis (-ve is left)

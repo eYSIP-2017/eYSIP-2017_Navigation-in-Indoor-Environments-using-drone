@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+"""Get drone to follow generated Trajectory."""
 from __future__ import print_function
 import rospy
 import actionlib
@@ -15,7 +16,7 @@ from pose import Pose
 class moveAction(object):
     """Action server class to move drone on waypoints.
 
-    This class in the action server used to move the drone on 
+    This class in the action server used to move the drone on
     waypoints generated. It handles the actual movement of the
     drone and publishes the feedback.
 
@@ -24,6 +25,7 @@ class moveAction(object):
         real_drone (bool): true if working with real drone not simulation
         aruco_mapping (bool): true, using aruco_mapping and not odometry
     """
+
     # create messages that are used to publish feedback/result
     _feedback = drone_application.msg.moveFeedback()
     _result = drone_application.msg.moveResult()
@@ -47,7 +49,7 @@ class moveAction(object):
             'Be careful, once a list of waypoints is given there is no way to stop execution yet.')
 
     def moniter_transform(self):
-        """Moniters the current pose of the drone based on odometry.
+        """Moniter the current pose of the drone based on odometry.
 
         Returns:
             numpy.array: containing the x, y, z, yaw values
@@ -81,8 +83,8 @@ class moveAction(object):
         self.camera_pose.x *= -1
 
     def move_to_waypoint(self, waypoint):
-        """Gets the drone to actually move to a waypoint.
-        
+        """Get the drone to actually move to a waypoint.
+
         Takes the waypoint and the current pose of controls pid
         It calls pid until the current pose is equal to the waypoint
         with a cetatin error tolerence.
@@ -148,7 +150,7 @@ class moveAction(object):
             self._as.publish_feedback(self._feedback)
 
     def execute_cb(self, goal):
-        """Starts Excecution of movement
+        """Start Excecution of movement.
 
         receives the goal and calls move_to_waypoint.
 
@@ -172,6 +174,7 @@ class moveAction(object):
             self._result.error = [2]
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._as.set_succeeded(self._result)
+
 
 if __name__ == '__main__':
     try:

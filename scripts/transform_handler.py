@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Generate transform between drone's odom and aruco's world."""
 import rospy
 
 # Because of transformations
@@ -9,7 +10,7 @@ from pyquaternion import Quaternion
 
 
 def as_transformation_matrix(trans):
-    """Converts geomety_msgs.msg.TransformStamped to Transformation matrix.
+    """Convert geomety_msgs.msg.TransformStamped to Transformation matrix.
 
     Args:
         trans (geomety_msgs.msg.TransformStamped): transform to be converted.
@@ -30,7 +31,7 @@ def as_transformation_matrix(trans):
 
 
 def as_transformation_ros(mat):
-    """Converts Transformation matrix to geomety_msgs.msg.TransformStamped.
+    """Convert Transformation matrix to geomety_msgs.msg.TransformStamped.
 
     Args:
         mat (numpy.array): transformation matrix to be converted.
@@ -51,7 +52,7 @@ def as_transformation_ros(mat):
 
 
 def multiply_transforms(trans1, trans2):
-    """Multiplies 2 transforms.
+    """Multiply 2 transforms.
 
     Args:
         trans1 (geomety_msgs.msg.TransformStamped): first transform to be multiplied.

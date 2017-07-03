@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Handle usage of EKF."""
 from __future__ import print_function
 
 import rospy
@@ -16,7 +17,7 @@ from kalman_filter import extendedKalmanFilter
 
 
 def navdata_callback(nav):
-    """Callback function for Navdata
+    """Callback function for Navdata.
 
     Args:
         nav (Navdata): the data sent by the drone
@@ -45,8 +46,8 @@ def navdata_callback(nav):
 
 
 def aruco_callback(aru):
-    """Callback for aruco_mapping
-    
+    """Callback for aruco_mapping.
+
     Args:
         aru (ArucoMarker): data published by aruco_mapping.
     """
@@ -72,8 +73,8 @@ def aruco_callback(aru):
 
 
 def make_prediction(active_control):
-    """Callback for /cmd_vel
-    
+    """Callback for /cmd_vel.
+
     Reads the current control, combines with odometry and aruco_mapping
     values using EKF and then publishes a pose which it believes to be
     the most accurate representation.

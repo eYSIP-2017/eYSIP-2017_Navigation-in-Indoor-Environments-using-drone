@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Extract, generate and send trajectory for excecution."""
 from __future__ import print_function
 import rospy
 from geometry_msgs.msg import Twist, TransformStamped
@@ -22,8 +23,8 @@ land_pub = rospy.Publisher('/ardrone/land', Empty, queue_size=5)
 
 
 def send_trajectory(waypoints, client=None):
-    """Send waypoints to follow
-    
+    """Send waypoints to follow.
+
     Sends individual waypoints as goals to moveaction server.
 
     Args:
@@ -51,11 +52,11 @@ done_waypoints = False
 
 
 def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
-    """Extracts the waypoints from move_group/display_planned_path
-    
+    """Extract the waypoints from move_group/display_planned_path.
+
     Very dirty implimentation, if a neater version is needed use
     the legacy_get_waypoints function.
-    
+
     Note:
         If visualisation is needed aruco_coords should be true.
         If visualise_trajectory is true no momement will take place
@@ -147,7 +148,7 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
 
 
 def legacy_get_waypoints(data):
-    """Extracts the waypoints from move_group/display_planned_path
+    """Extract the waypoints from move_group/display_planned_path.
 
     Legacy function of get_waypoints, this is a way neater implimentation.
 
