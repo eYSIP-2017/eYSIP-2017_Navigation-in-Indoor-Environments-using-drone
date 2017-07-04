@@ -69,16 +69,21 @@ def multiply_transforms(trans1, trans2):
 if __name__ == '__main__':
     rospy.init_node('transform_handler')
     real_drone = bool(rospy.get_param('~real_drone', 'false'))
+    # check to see if you are working with read drone or in simulation
+    # the world frame is different for both
     if real_drone:
         drone_world = 'odom'
     else:
         drone_world = 'nav'
 
+    # initialising tf listener
     tfBuffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(tfBuffer)
 
+    # setting up rate at which to transmit data
     rate = rospy.Rate(10.0)
     found = False
+    # stay in loop unless rospy is closed
     while not rospy.is_shutdown():
         try:
             trans1 = tfBuffer.lookup_transform(
@@ -88,6 +93,7 @@ if __name__ == '__main__':
 
             # get the transform fro drone_world to aruco's world
             trans = multiply_transforms(trans2.transform, trans1.transform)
+            # check to ensure that only the first transform is considered
             if not found:
                 static_trans = trans
                 found = True
@@ -104,4 +110,5 @@ if __name__ == '__main__':
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print('not yet found')
             continue
+        # sleep for the time in rate
         rate.sleep()

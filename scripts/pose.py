@@ -65,7 +65,8 @@ class Pose(object):
             self.y = getattr(transform.position, remap[1])
             self.z = getattr(transform.position, remap[2])
             self.yaw = euler[remap[3]]
-
+        # for some the attributes are different.
+        # this may not be the best method but it works.
         except AttributeError:
             euler = euler_from_quaternion((transform.rotation.x,
                                            transform.rotation.y,

@@ -32,15 +32,21 @@ class moveAction(object):
 
     def __init__(self, name, real_drone, aruco_mapping):
         self._action_name = name
+        # creating a tf listener object
         self.tf_listener = tf.TransformListener()
+        # creating publisher for command velocity to drone
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
+        # creating an action server object
         self._as = actionlib.SimpleActionServer(
             self._action_name,
             drone_application.msg.moveAction,
             execute_cb=self.execute_cb,
             auto_start=False)
+        # starting the action server
         self._as.start()
+        # twist object to stop motion
         self.empty_twist = Twist()
+        # Pose object to hold current global pose
         self.camera_pose = Pose()
         self.real_drone = real_drone
         self.aruco_mapping = aruco_mapping
@@ -55,8 +61,10 @@ class moveAction(object):
             numpy.array: containing the x, y, z, yaw values
         """
         trans = None
+        # stay in the loop until transform found
         while trans is None:
             try:
+                # checking if working with real drone or simulation
                 if self.real_drone:
                     trans, rot = self.tf_listener.lookupTransform(
                         '/ardrone_base_link', '/odom', rospy.Time(0))
@@ -64,6 +72,7 @@ class moveAction(object):
                     trans, rot = self.tf_listener.lookupTransform(
                         'nav', 'base_link', rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                # not exiting the loop until tf found
                 continue
         euler = tf.transformations.euler_from_quaternion(rot)
         return np.array([trans[0], trans[1], trans[2], euler[2]])
@@ -92,6 +101,7 @@ class moveAction(object):
         Args:
             waypoint (numpy.array): contains the waypoint to travel to
         """
+        # checking if using aruco mapping or odometry for localisation
         if self.aruco_mapping:
             current_pose = self.camera_pose.as_waypoints()
         else:
@@ -99,10 +109,12 @@ class moveAction(object):
 
         # dict for PID
         state = dict()
+        # initialisation of various variables for PID
         state['lastError'] = np.array([0., 0., 0., 0.])
         state['integral'] = np.array([0., 0., 0., 0.])
         state['derivative'] = np.array([0., 0., 0., 0.])
 
+        # set pid gains
         xy_pid = [2, 0.0, 0.]
         # xy_pid = [0.2, 0.00, 0.1]
         state['p'] = np.array(
@@ -112,13 +124,16 @@ class moveAction(object):
         state['d'] = np.array(
             [xy_pid[2], xy_pid[2], 0.15, 0.0], dtype=float)
 
+        # to avoid huge jump for the first iteration
         state['last_time'] = time.time()
         last_twist = np.zeros(4)
         marker_not_detected_count = 0
 
         # not controlling yaw since drone was broken
+        # stay in the loop until staisfactory error range attained
         while not np.allclose(
                 current_pose[0:-1], waypoint[0:-1], atol=0.1):
+            # check if using aruco_mapping or odometry
             if self.aruco_mapping:
                 current_pose = self.camera_pose.as_waypoints()
                 pid_twist, state = pid(current_pose, waypoint, state)
@@ -140,6 +155,7 @@ class moveAction(object):
                 else:
                     self.pub.publish(pid_twist)
 
+                # store last twist values to check if feed is stuck or not
                 last_twist[0] = pid_twist.linear.x
                 last_twist[1] = pid_twist.linear.y
                 last_twist[2] = pid_twist.linear.z
@@ -184,14 +200,19 @@ class moveAction(object):
 if __name__ == '__main__':
     try:
         rospy.init_node('move_to_waypoint')
+        # taking command line arguments to control the behaviour of the drone.
+        # also setting the default behaviour
         real_drone = bool(rospy.get_param('~real_drone', 'false'))
         aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
 
+        # creating a moveAction class object
         server = moveAction(rospy.get_name(), real_drone, aruco_mapping)
-        rospy.Subscriber(
-            "/aruco_poses",
-            ArucoMarker,
-            server.get_camera_pose)
+        # subscribing to aruco_poses in aruco mapping is in use
+        if aruco_mapping:
+            rospy.Subscriber(
+                "/aruco_poses",
+                ArucoMarker,
+                server.get_camera_pose)
 
         rospy.spin()
     except rospy.ROSInterruptException:

@@ -96,8 +96,10 @@ def get_pose_from_aruco(temp_pose):
 
     """
     # This functionality is for moving from one aruco to the next.
+    # check if aruco_mapping is to be used
     if aruco_mapping:
         marker_pose.store_marker_ids(temp_pose.marker_ids)
+        # there should be at least 1 marker detected
         if len(temp_pose.marker_ids) != 0:
             # if max found then find the lowest id else find the highest
             if marker_pose.get_max_found():
@@ -111,6 +113,7 @@ def get_pose_from_aruco(temp_pose):
             # if largest value found set max_found to true
             if current_marker_id == 19:
                 marker_pose.set_max_found(True)
+        # ensure that the first marker is detected and there is a marker being detected now
         if marker_pose.get_current_marker_id() is not None and len(temp_pose.marker_ids) != 0:
             marker_pose.convert_geometry_transform_to_pose(
                 temp_pose.global_marker_poses[temp_pose.marker_ids.index(current_marker_id)])
@@ -127,16 +130,18 @@ def get_pose_from_kalman(kalman_pose):
 
 
 if __name__ == "__main__":
+    # create pose objects to hold drone pose and marker pose
     marker_pose = Pose()
     global_pose = Pose()
-    # print(last_time, dt)
+
     settings = termios.tcgetattr(sys.stdin)
     rospy.init_node('ardrone_teleop')
-    # get commmand line args
+    # get commmand line args to handle working of node
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
     localisation = bool(rospy.get_param('~localisation', 'true'))
 
+    # subscribe to navdata to check if battery is low and land
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
     # subscribing to aruco_mapping is essential for localisation
     if localisation:
@@ -161,11 +166,16 @@ if __name__ == "__main__":
         print(doc_msg)
         # state dict for pid
         state = dict()
+        # initialising variables for PID
         state['lastError'] = np.array([0., 0., 0., 0.])
 
+        # setting the PID gains
         # values of x and y may remain same
+        # check if the aruco is in front or not
         if aruco_front:
+            # just comment the inner values and use this for simulation
             xy_pid = [1, 0.0, 0.0]
+            # check if aruco_mapping is being used or not
             if aruco_mapping:
                 xy_pid = [0.15 / 2, 0.015 / 2, 0.025 / 2]
                 state['p'] = np.array(
@@ -194,15 +204,17 @@ if __name__ == "__main__":
             state['d'] = np.array(
                 [xy_pid_bottom[2], xy_pid_bottom[2], 1, 0.05], dtype=float)
 
+        # initialising variables for PID
         state['integral'] = np.array([0., 0., 0., 0.])
         state['derivative'] = np.array([0., 0., 0., 0.])
-        yaw_set = 180
 
         twist = msg.Twist()
         import time
+        # execute the following commands until node is shutdown.
         while True:
             state['last_time'] = time.time()
             key = getKey()
+            # check the predifined key bindings
             if key in moveBindings.keys():
                 xyz = moveBindings[key]
             elif key == 't':
@@ -213,14 +225,22 @@ if __name__ == "__main__":
                 land_pub.publish()
             elif key == 'p':
                 # start PID
+                # initialisation of variables needed
                 last_twist = np.zeros(4)
                 marker_not_detected_count = 0
+                # continue PID indefinatly until stopped of node exits
                 while True:
+                    # check if using aruco_mapping.
                     if aruco_mapping:
+                        # get the marker to be the new set array
                         set_array = marker_pose.as_waypoints()
+                        # offest x axis by 1.5 to maintain 1.5m distance
+                        # from drone.
                         set_array[0] += 1.5
+                        # get current pose
                         current_pose = global_pose.as_waypoints()
 
+                        # run one iteration of PID
                         pid_twist, state = pid(
                             current_pose, set_array, state)
 
@@ -241,6 +261,7 @@ if __name__ == "__main__":
                         else:
                             pub.publish(pid_twist)
 
+                        # store last twist values to see if the feed is stuck
                         last_twist[0] = pid_twist.linear.x
                         last_twist[1] = pid_twist.linear.y
                         last_twist[2] = pid_twist.linear.z
@@ -260,6 +281,7 @@ if __name__ == "__main__":
                         xyz = (0, 0, 0, 0, 0, 0)
                         break
                     elif key == 'f':
+                        # print pid gains
                         print(
                             'yaw: {}, {}, {}; z-axis: {}, {}, {}; xy-axis: {}, {}, {};'.format(
                                 state['p'][3],
