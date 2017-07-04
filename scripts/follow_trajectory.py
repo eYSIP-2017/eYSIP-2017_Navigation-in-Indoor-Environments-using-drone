@@ -51,7 +51,7 @@ waypoints = deque()
 done_waypoints = False
 
 
-def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
+def get_waypoints(data):
     """Extract the waypoints from move_group/display_planned_path.
 
     Very dirty implimentation, if a neater version is needed use
@@ -135,10 +135,10 @@ def get_waypoints(data, aruco_coords=False, visualise_trajectory=False):
             temp_trans.child_frame_id = 'test_transform_' + str(i)
             temp_trans.transform.translation.y *= -1
             p.convert_geometry_transform_to_pose(temp_trans)
+            i += 1
         else:
             p.convert_geometry_transform_to_pose(transform.transforms[0])
         waypoints.append(np.around(p.as_waypoints(), decimals=2))
-        i += 1
     done_waypoints = True
     if visualise_trajectory:
         # stay in this loop if visualisation in needed.
@@ -176,11 +176,12 @@ if __name__ == '__main__':
     try:
         rospy.init_node('follow_trajectory', anonymous=True)
         real_drone = bool(rospy.get_param('~real_drone', 'false'))
+        aruco_coords = bool(rospy.get_param('~aruco_coords', 'false'))
+        visualise_trajectory = bool(rospy.get_param('~visualise_trajectory', 'false'))
         rospy.Subscriber(
             "/move_group/display_planned_path",
             DisplayTrajectory,
-            get_waypoints,
-            True)
+            get_waypoints)
 
         # wait until waypoints are extracted from
         # move_group/display_planned_path

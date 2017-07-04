@@ -62,7 +62,7 @@ class moveAction(object):
                         '/ardrone_base_link', '/odom', rospy.Time(0))
                 else:
                     trans, rot = self.tf_listener.lookupTransform(
-                        '/base_link', 'nav', rospy.Time(0))
+                        'nav', 'base_link', rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
         euler = tf.transformations.euler_from_quaternion(rot)
@@ -103,8 +103,8 @@ class moveAction(object):
         state['integral'] = np.array([0., 0., 0., 0.])
         state['derivative'] = np.array([0., 0., 0., 0.])
 
-        # xy_pid = [0.3, 0.0, 0.25]
-        xy_pid = [0.2, 0.00, 0.1]
+        xy_pid = [2, 0.0, 0.]
+        # xy_pid = [0.2, 0.00, 0.1]
         state['p'] = np.array(
             [xy_pid[0], xy_pid[0], 0.3, 1.0], dtype=float)
         state['i'] = np.array(
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         real_drone = bool(rospy.get_param('~real_drone', 'false'))
         aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
 
-        server = moveAction(rospy.get_name())
+        server = moveAction(rospy.get_name(), real_drone, aruco_mapping)
         rospy.Subscriber(
             "/aruco_poses",
             ArucoMarker,
@@ -196,6 +196,3 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         print('got exception')
-    finally:
-        twist = Twist()
-        server.pub()
