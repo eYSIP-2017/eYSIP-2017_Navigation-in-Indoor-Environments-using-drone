@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+<node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args=".5 0 0 0 1.570 0 world marker_233 10" />
+  <node pkg="viewpoint_estimation" type="viewpoint_estimation" name="viewpoint_estimation" output="screen"> 
+     <remap from="/image_raw" to="/ardrone/front/image_raw" />
+     <rosparam> 
+      calibration_file: "/home/ros/.ros/camera_info/ardrone_front.ini"
+     </rosparam> 
+  </node> 
+ </launch>
+
+

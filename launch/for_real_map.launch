@@ -1,0 +1,52 @@
+<launch>
+  <param name="use_sim_time" value="true" />
+  <!-- By default, we do not start a database (it can be large) -->
+  <arg name="db" default="false" />
+  <!-- Take the name of the package in which config is stored-->
+  <arg name="config_pkg" default="ardrone_config" />
+
+  <!-- By default, we are not in debug mode -->
+  <arg name="debug" default="false" />
+
+  <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
+  <include file="$(find $(arg config_pkg))/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
+<!-- <include file="$(find cvg_sim_gazebo)/launch/ardrone_testworld.launch" />  -->
+  <!-- If needed, broadcast static tf for robot root -->
+    <!-- <node pkg="pcl_ros" type="pcd_to_pointcloud" name="pcd_to_pt" args="/home/ros/home.pcd 5">
+      <param name="frame_id" value="odom" />
+    </node> -->
+    <node pkg="rosbag" type="play" name="point_clouds" args="--clock /home/ros/ardrone_ws/bags/real_map.bag" />
+    <node pkg="tf" type="static_transform_publisher" name="world_tofootprint" args="0 0 0 0 0 0 world map 5" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 base_footprint base_link 5" /> -->
+    <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 camera_link base_link 5" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="odom_map_broadcaster" args="0 0 0 0 0 0 world odom 5" /> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="camera_frame_publish" args="0 0 0 0 0 0 ardrone_base_frontcam camera_depth_optical_frame 5" /> -->
+
+<!-- <node pkg="tf" type="static_transform_publisher" name="base_joint_broadcaster_0" args="0 0 0 0 0 0 nav base_link 100" /> -->
+
+  <!-- We do not have a robot connected, so publish fake joint states -->
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <param name="/use_gui" value="false"/>
+    <rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>
+  </node>
+
+  <!-- Given the published joint states, publish tf for the robot links -->
+ <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+ <!-- <node name="action_controller" pkg="action_controller" type="action_controller" ></node> -->
+
+  <!-- Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default) -->
+  <include file="$(find $(arg config_pkg))/launch/move_group.launch">
+    <arg name="allow_trajectory_execution" value="true"/>
+    <arg name="fake_execution" value="true"/>
+    <arg name="info" value="true"/>
+    <arg name="debug" value="$(arg debug)"/>
+  </include>
+
+  <!-- Run Rviz and load the default config to see the state of the move_group node -->
+  <include file="$(find $(arg config_pkg))/launch/moveit_rviz.launch">
+    <arg name="config" value="true"/>
+    <arg name="debug" value="$(arg debug)"/>
+  </include>
+</launch>
