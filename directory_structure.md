@@ -41,3 +41,17 @@ The other folders added are as follows
     * complete_install.sh - installs everything needed for the use of this project
 * worlds
     * holds the test worlds that we had created
+    * small_world.sdf - small test world created
+    * small_world_with_aruco.sdf - small test world created with arucos loaded
+
+#### Difference in other branches
+
+* **whycon**
+    * whycon_formation_data
+        * holds files and scripts used for training formation based identification of whycon
+        * *.txt files are data collected
+        * *.p files are pretrained models
+        * store_formation_data.py - data collection script
+        * extract_results_from_whycon.py - using the data to train and draw inferences
+    * scripts
+        * detect_whycon.py - using pretrained objects to find the the current formation group
