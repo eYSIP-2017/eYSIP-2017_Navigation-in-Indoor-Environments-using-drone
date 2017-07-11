@@ -139,7 +139,7 @@ if __name__ == "__main__":
     # get commmand line args to handle working of node
     aruco_front = bool(rospy.get_param('~aruco_front', 'true'))
     aruco_mapping = bool(rospy.get_param('~aruco_mapping', 'true'))
-    localisation = bool(rospy.get_param('~localisation', 'true'))
+    localisation = bool(rospy.get_param('~localisation', 'false'))
 
     # subscribe to navdata to check if battery is low and land
     rospy.Subscriber("/ardrone/navdata", Navdata, check_battery)
@@ -161,6 +161,7 @@ if __name__ == "__main__":
 
     marker_ids = marker_pose.get_marker_ids()
 
+    # storage of twist values to be sent to drone
     xyz = (0, 0, 0, 0, 0, 0)
     try:
         print(doc_msg)
